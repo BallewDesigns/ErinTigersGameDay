@@ -1,8 +1,9 @@
 {
-  "name": "GameDay — Baseball Tracker",
+  "name": "GameDay — Tigers Tracker",
   "short_name": "GameDay",
-  "description": "Track your baseball team's schedule and season tickets",
-  "start_url": "/",
+  "description": "Detroit Tigers schedule and season tickets",
+  "start_url": "/ErinTigersGameDay/",
+  "scope": "/ErinTigersGameDay/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
