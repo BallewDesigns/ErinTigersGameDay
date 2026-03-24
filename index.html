@@ -639,6 +639,85 @@
   .empty-icon { font-size: 48px; margin-bottom: 12px; }
   .empty-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
   .empty-sub { font-size: 13px; }
+
+  /* ── LIVE SCORE HERO ── */
+  .hero-live {
+    background: linear-gradient(135deg, rgba(232,56,61,0.15), rgba(255,107,53,0.08));
+    border-color: rgba(232,56,61,0.35);
+  }
+  .live-score-board {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0 14px;
+    gap: 8px;
+  }
+  .score-team { flex: 1; text-align: center; }
+  .score-team-name {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .score-runs {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .score-runs.winning { color: #4ade80; }
+  .score-middle { text-align: center; flex-shrink: 0; }
+  .score-inning {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .score-inning-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .score-half { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .lob-row {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 2px;
+  }
+  .lob-stat { display: flex; gap: 4px; align-items: center; }
+  .lob-val { color: var(--text); font-weight: 500; }
+
+  /* ── FINAL / IN-LIST SCORE ── */
+  .game-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .game-score.win { color: #4ade80; }
+  .game-score.loss { color: var(--accent); }
+
+  /* ── REFRESH INDICATOR ── */
+  .refresh-badge {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
 </style>
 </head>
 <body>
@@ -669,6 +748,15 @@
       <span>🔔</span>
       <span>Enable game-time notifications</span>
       <span style="margin-left:auto;font-size:18px;">→</span>
+    </div>
+
+    <!-- Live game pinned at top -->
+    <div id="live-section" style="display:none">
+      <div class="section-head">
+        <span class="section-title" style="color:var(--accent)">⚡ Live now</span>
+        <span class="refresh-badge"><span id="refresh-spin">↻</span>&nbsp;<span id="refresh-label">updating…</span></span>
+      </div>
+      <div class="game-list" style="padding-bottom:0" id="live-game-card"></div>
     </div>
 
     <div id="hero-section"></div>
@@ -939,12 +1027,17 @@ async function enterApp() {
   await fetchSchedule();
   renderHome();
   renderSchedule();
+  // Fetch live scores after schedule loads; auto-refresh handles itself
+  fetchLiveScores();
 }
+
+// ── MLB PROXY ─────────────────────────────────────────────────────────────────
+const PROXY = 'https://mlb-proxy.onrender.com';
 
 // ── MLB API ───────────────────────────────────────────────────────────────────
 async function fetchSchedule() {
   const year = new Date().getFullYear();
-  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${state.teamId}&season=${year}&gameType=R&hydrate=broadcasts`;
+  const url = `${PROXY}/schedule?teamId=${state.teamId}&season=${year}&gameType=R&hydrate=broadcasts`;
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -1007,16 +1100,107 @@ function getDemoGames() {
   return games;
 }
 
+// ── LIVE SCORE STATE ──────────────────────────────────────────────────────────
+let liveRefreshInterval = null;
+let liveScores = {}; // gamePk -> score data
+
+// ── FETCH LIVE SCORES ─────────────────────────────────────────────────────────
+async function fetchLiveScores() {
+  const spinEl = document.getElementById('refresh-spin');
+  const labelEl = document.getElementById('refresh-label');
+  if (spinEl) spinEl.classList.add('spinning');
+
+  try {
+    // Get today's games for this team
+    const today = new Date().toISOString().split('T')[0];
+    const url = `${PROXY}/today?teamId=${state.teamId}&date=${today}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    let hasLive = false;
+    (data.dates || []).forEach(d => {
+      (d.games || []).forEach(g => {
+        const abstractState = g.status?.abstractGameState;
+        const detailedState = g.status?.detailedState || '';
+        const isLive = abstractState === 'Live';
+        const isFinal = abstractState === 'Final';
+        const ls = g.linescore || {};
+
+        liveScores[g.gamePk] = {
+          status: abstractState,
+          detailedState,
+          homeRuns: g.teams?.home?.score ?? 0,
+          awayRuns: g.teams?.away?.score ?? 0,
+          homeTeamId: g.teams?.home?.team?.id,
+          awayTeamId: g.teams?.away?.team?.id,
+          homeName: g.teams?.home?.team?.name || '',
+          awayName: g.teams?.away?.team?.name || '',
+          inning: ls.currentInning || ls.scheduledInnings || 9,
+          inningHalf: ls.inningHalf || '',
+          hits: { home: ls.teams?.home?.hits ?? 0, away: ls.teams?.away?.hits ?? 0 },
+          errors: { home: ls.teams?.home?.errors ?? 0, away: ls.teams?.away?.errors ?? 0 },
+          isLive,
+          isFinal,
+        };
+        if (isLive) hasLive = true;
+      });
+    });
+
+    // Update game statuses in state.games
+    state.games.forEach(g => {
+      if (liveScores[g.id]) {
+        g.liveData = liveScores[g.id];
+        if (liveScores[g.id].isLive) g.status = 'Live';
+        if (liveScores[g.id].isFinal) g.status = 'Final';
+      }
+    });
+
+    const now = new Date();
+    if (labelEl) labelEl.textContent = 'updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    renderHome();
+
+    // Keep refreshing every 60s if there's a live game
+    if (hasLive && !liveRefreshInterval) {
+      liveRefreshInterval = setInterval(fetchLiveScores, 60000);
+    } else if (!hasLive && liveRefreshInterval) {
+      clearInterval(liveRefreshInterval);
+      liveRefreshInterval = null;
+    }
+  } catch(e) {
+    console.error('Live score fetch failed', e);
+    if (labelEl) labelEl.textContent = 'offline';
+  }
+  if (spinEl) spinEl.classList.remove('spinning');
+}
+
 // ── RENDER HOME ───────────────────────────────────────────────────────────────
 function renderHome() {
   const now = new Date();
-  const upcoming = state.games.filter(g => g.datetime >= now || g.status === 'Live');
+  const liveGames = state.games.filter(g => g.status === 'Live');
+  const upcoming = state.games.filter(g => g.status !== 'Final' && g.status !== 'Live' && g.datetime >= now);
   const next = upcoming[0];
+
   const heroEl = document.getElementById('hero-section');
   const upcomingEl = document.getElementById('home-upcoming');
+  const liveSection = document.getElementById('live-section');
+  const liveCardEl = document.getElementById('live-game-card');
 
+  // ── Live game block ──
+  if (liveGames.length > 0) {
+    liveSection.style.display = 'block';
+    liveCardEl.innerHTML = liveGames.map(g => liveScoreCardHTML(g)).join('');
+  } else {
+    liveSection.style.display = 'none';
+    liveCardEl.innerHTML = '';
+  }
+
+  // ── Next game hero ──
   if (!next) {
-    heroEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-title">No upcoming games</div><div class="empty-sub">Check back when the season starts!</div></div>';
+    if (liveGames.length === 0) {
+      heroEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-title">No upcoming games</div><div class="empty-sub">Check back when the season starts!</div></div>';
+    } else {
+      heroEl.innerHTML = '';
+    }
     upcomingEl.innerHTML = '';
     return;
   }
@@ -1025,15 +1209,12 @@ function renderHome() {
   const matchup = next.isHome
     ? `<span>${state.teamName.split(' ').pop()}</span><span class="hero-vs">vs</span><span>${next.opponent.split(' ').pop()}</span>`
     : `<span>${next.opponent.split(' ').pop()}</span><span class="hero-vs">@</span><span>${state.teamName.split(' ').pop()}</span>`;
-
   const bcastBadges = next.broadcasts.slice(0,2).map(b =>
     `<span class="badge badge-tv">${b}</span>`).join('');
 
   heroEl.innerHTML = `
     <div class="hero" onclick="openGameModal(${next.id})">
-      <div class="hero-eyebrow">
-        ${next.status === 'Live' ? '<span class="live-dot"></span>LIVE NOW' : 'NEXT GAME'}
-      </div>
+      <div class="hero-eyebrow">NEXT GAME</div>
       <div class="hero-matchup">${matchup}</div>
       <div class="hero-meta">${formatDate(next.datetime)} · ${formatTime(next.datetime)}</div>
       <div class="hero-meta" style="margin-top:-8px">${next.venue}</div>
@@ -1047,9 +1228,57 @@ function renderHome() {
 
   startCountdown(next.datetime);
 
-  // Next 4 upcoming
+  // Next 4 upcoming after next
   const rest = upcoming.slice(1, 5);
   upcomingEl.innerHTML = rest.map((g,i) => gameCardHTML(g, i*0.05)).join('');
+}
+
+// ── LIVE SCORE CARD ───────────────────────────────────────────────────────────
+function liveScoreCardHTML(g) {
+  const ld = g.liveData || {};
+  const myTeamIsHome = g.isHome;
+  const myRuns = myTeamIsHome ? ld.homeRuns : ld.awayRuns;
+  const oppRuns = myTeamIsHome ? ld.awayRuns : ld.homeRuns;
+  const myHits  = myTeamIsHome ? (ld.hits?.home ?? 0) : (ld.hits?.away ?? 0);
+  const oppHits = myTeamIsHome ? (ld.hits?.away ?? 0) : (ld.hits?.home ?? 0);
+  const myErr   = myTeamIsHome ? (ld.errors?.home ?? 0) : (ld.errors?.away ?? 0);
+  const oppErr  = myTeamIsHome ? (ld.errors?.away ?? 0) : (ld.errors?.home ?? 0);
+  const myWinning = myRuns > oppRuns;
+  const oppWinning = oppRuns > myRuns;
+  const hasTicket = state.ticketDates.has(g.date);
+  const inningLabel = ld.inningHalf ? `${ld.inningHalf} ${ld.inning}` : `Inn ${ld.inning}`;
+  const myName = state.teamName.split(' ').pop();
+  const oppName = g.opponent.split(' ').pop();
+  const bcast = g.broadcasts[0] ? `<span class="badge badge-tv">${g.broadcasts[0]}</span>` : '';
+
+  return `
+    <div class="game-card hero-live has-ticket" style="${hasTicket?'border-left:3px solid var(--ticket)':''}" onclick="openGameModal(${g.id})">
+      <div style="width:100%">
+        <div class="hero-eyebrow" style="margin-bottom:8px">
+          <span class="live-dot"></span>LIVE · ${ld.detailedState || 'In Progress'}
+          ${hasTicket ? '&nbsp;<span class="badge badge-ticket" style="font-size:10px">🎟 Your tickets</span>' : ''}
+          ${bcast}
+        </div>
+        <div class="live-score-board">
+          <div class="score-team">
+            <div class="score-team-name">${g.isHome ? myName : oppName}</div>
+            <div class="score-runs ${g.isHome ? (myWinning?'winning':'') : (oppWinning?'winning':'')}">${g.isHome ? myRuns : oppRuns}</div>
+          </div>
+          <div class="score-middle">
+            <div class="score-inning">${ld.inning || '—'}</div>
+            <div class="score-inning-label">${ld.inningHalf || 'Inning'}</div>
+          </div>
+          <div class="score-team">
+            <div class="score-team-name">${g.isHome ? oppName : myName}</div>
+            <div class="score-runs ${g.isHome ? (oppWinning?'winning':'') : (myWinning?'winning':'')}">${g.isHome ? oppRuns : myRuns}</div>
+          </div>
+        </div>
+        <div class="lob-row">
+          <div class="lob-stat">${myName}: <span class="lob-val">${myHits}H</span>&nbsp;<span class="lob-val">${myErr}E</span></div>
+          <div class="lob-stat">${oppName}: <span class="lob-val">${oppHits}H</span>&nbsp;<span class="lob-val">${oppErr}E</span></div>
+        </div>
+      </div>
+    </div>`;
 }
 
 function startCountdown(target) {
@@ -1082,6 +1311,24 @@ function gameCardHTML(g, delay = 0) {
   const dayNum = d.getDate();
   const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
   const bcast = g.broadcasts[0] ? `<span class="badge badge-tv" style="font-size:10px">${g.broadcasts[0]}</span>` : '';
+  const isFinal = g.status === 'Final';
+  const isLive = g.status === 'Live';
+
+  // Score display for final/live games
+  let scoreHTML = '';
+  if ((isFinal || isLive) && g.liveData) {
+    const ld = g.liveData;
+    const myRuns  = g.isHome ? ld.homeRuns : ld.awayRuns;
+    const oppRuns = g.isHome ? ld.awayRuns : ld.homeRuns;
+    const won = myRuns > oppRuns;
+    const lost = myRuns < oppRuns;
+    const cls = won ? 'win' : (lost ? 'loss' : '');
+    const label = isFinal ? 'F' : `L${ld.inning}`;
+    scoreHTML = `<span class="game-score ${cls}">${label} ${myRuns}-${oppRuns}</span>`;
+  } else if (isLive) {
+    scoreHTML = `<span class="badge" style="background:rgba(232,56,61,0.15);color:var(--accent);border:1px solid rgba(232,56,61,0.3);font-size:10px"><span class="live-dot" style="width:5px;height:5px;display:inline-block;margin-right:3px"></span>LIVE</span>`;
+  }
+
   return `
     <div class="game-card ${hasTicket?'has-ticket':''}" style="animation-delay:${delay}s" onclick="openGameModal(${g.id})">
       <div class="game-date-col">
@@ -1091,11 +1338,12 @@ function gameCardHTML(g, delay = 0) {
       <div class="game-divider"></div>
       <div class="game-info">
         <div class="game-matchup">${g.isHome ? state.teamName.split(' ').pop()+' vs '+g.opponent.split(' ').pop() : g.opponent.split(' ').pop()+' @ '+state.teamName.split(' ').pop()}</div>
-        <div class="game-detail">${formatTime(g.datetime)} · ${g.venue.split(' ').slice(0,2).join(' ')}</div>
+        <div class="game-detail">${isFinal ? 'Final' : formatTime(g.datetime)} · ${g.venue.split(' ').slice(0,2).join(' ')}</div>
       </div>
       <div class="game-badges-col">
-        ${hasTicket ? '<span class="badge badge-ticket" style="font-size:10px">🎟</span>' : ''}
-        ${bcast}
+        ${scoreHTML}
+        ${!isFinal && !isLive && hasTicket ? '<span class="badge badge-ticket" style="font-size:10px">🎟</span>' : ''}
+        ${!isFinal && !isLive ? bcast : ''}
       </div>
     </div>`;
 }
