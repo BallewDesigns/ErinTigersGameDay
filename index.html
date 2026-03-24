@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GameDay">
+<meta name="theme-color" content="#0a0a0f">
+<title>GameDay</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07);
+    --accent: #e8383d;
+    --accent2: #ff6b35;
+    --text: #f0f0f8;
+    --muted: #6b6b80;
+    --ticket: #2a9d5c;
+    --ticket-bg: rgba(42,157,92,0.12);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; flex: 1; }
+  .screen.active { display: flex; }
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen {
+    padding: calc(var(--safe-top) + 48px) 24px 40px;
+    justify-content: center;
+    min-height: 100dvh;
+  }
+  .setup-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .setup-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 48px;
+    letter-spacing: 0.05em;
+  }
+  .setup-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+  .team-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .team-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team-btn:active { transform: scale(0.97); }
+  .team-btn.selected {
+    border-color: var(--accent);
+    background: rgba(232,56,61,0.1);
+    color: #ff8a8d;
+  }
+  .team-color {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cta-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .cta-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .cta-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── MAIN HEADER ── */
+  .main-header {
+    padding: calc(var(--safe-top) + 16px) 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header-team {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.15s;
+  }
+  .icon-btn:active { background: var(--surface2); }
+
+  /* ── NEXT GAME HERO ── */
+  .hero {
+    margin: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,56,61,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .hero-matchup {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .hero-vs { color: var(--muted); margin: 0 6px; }
+  .hero-meta {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    font-family: 'DM Mono', monospace;
+  }
+  .hero-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 8px;
+    letter-spacing: 0.03em;
+  }
+  .badge-ticket {
+    background: var(--ticket-bg);
+    color: #4ade80;
+    border: 1px solid rgba(42,157,92,0.25);
+  }
+  .badge-tv {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge-home {
+    background: rgba(232,56,61,0.1);
+    color: #ff8a8d;
+    border: 1px solid rgba(232,56,61,0.2);
+  }
+  .badge-away {
+    background: rgba(107,107,128,0.15);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .countdown {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+  }
+  .cd-unit { text-align: center; }
+  .cd-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .cd-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .cd-sep {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--border);
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  /* ── SECTION ── */
+  .section-head {
+    padding: 4px 20px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  /* ── GAME LIST ── */
+  .game-list {
+    padding: 0 16px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .game-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    animation: fadeUp 0.3s ease both;
+  }
+  .game-card:active { background: var(--surface2); }
+  .game-card.has-ticket { border-left: 3px solid var(--ticket); }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .game-date-col {
+    text-align: center;
+    min-width: 36px;
+  }
+  .game-day {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .game-dow {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .game-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .game-info { flex: 1; min-width: 0; }
+  .game-matchup {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .game-detail {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .game-badges-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── TABS ── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 10px 0 calc(10px + var(--safe-bot));
+    display: flex;
+    justify-content: space-around;
+    z-index: 20;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 20px;
+    transition: opacity 0.15s;
+  }
+  .tab:active { opacity: 0.6; }
+  .tab-icon { font-size: 20px; }
+  .tab-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .tab.active .tab-label { color: var(--accent); }
+  .tab.active .tab-icon { filter: drop-shadow(0 0 6px rgba(232,56,61,0.5)); }
+
+  /* ── SCHEDULE SCREEN ── */
+  #schedule-screen { padding-bottom: 0; }
+  .schedule-header {
+    padding: calc(var(--safe-top) + 16px) 20px 14px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .schedule-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+  }
+  .filter-btn {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-btn.active {
+    background: rgba(232,56,61,0.12);
+    border-color: rgba(232,56,61,0.4);
+    color: #ff8a8d;
+  }
+  .schedule-list {
+    padding: 12px 16px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .month-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 8px 4px 4px;
+  }
+
+  /* ── SETTINGS SCREEN ── */
+  #settings-screen {
+    padding: calc(var(--safe-top) + 16px) 20px calc(100px + var(--safe-bot));
+    overflow-y: auto;
+  }
+  .settings-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+    margin-bottom: 28px;
+  }
+  .settings-section {
+    margin-bottom: 28px;
+  }
+  .settings-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .settings-row {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label { color: var(--text); }
+  .settings-row-value { color: var(--muted); font-size: 13px; }
+  .toggle {
+    width: 44px; height: 26px;
+    background: var(--surface2);
+    border-radius: 13px;
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* ── CSV IMPORT ── */
+  .upload-zone {
+    background: var(--surface);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(232,56,61,0.05);
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--muted); }
+  #csv-input { display: none; }
+  .ticket-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .ticket-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ticket-item:last-child { border-bottom: none; }
+  .ticket-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ticket); flex-shrink: 0; }
+
+  /* ── NOTIFICATION BANNER ── */
+  .notify-banner {
+    margin: 12px 16px 0;
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.25);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #ffb89a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .notify-banner.hidden { display: none; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px calc(24px + var(--safe-bot));
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    transform: translateY(40px);
+    transition: transform 0.25s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .modal-row:last-of-type { border-bottom: none; }
+  .modal-row-label { color: var(--muted); }
+  .modal-close {
+    margin-top: 20px;
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── SETUP SCREEN ── -->
+  <div id="setup-screen" class="screen active">
+    <div class="setup-logo">GameDay</div>
+    <p class="setup-sub">Your team. Every game. One tap.</p>
+    <p class="setup-label">Pick your team</p>
+    <div class="team-grid" id="team-grid"></div>
+    <button class="cta-btn" id="setup-btn" disabled onclick="completeSetup()">Let's go →</button>
+  </div>
+
+  <!-- ── HOME SCREEN ── -->
+  <div id="home-screen" class="screen">
+    <div class="main-header">
+      <div>
+        <div class="header-logo">GameDay</div>
+        <div class="header-team" id="header-team-name">Loading…</div>
+      </div>
+      <div class="header-right">
+        <div class="icon-btn" onclick="showTab('settings')" title="Settings">⚙️</div>
+      </div>
+    </div>
+
+    <div id="notify-banner" class="notify-banner" onclick="requestNotifications()">
+      <span>🔔</span>
+      <span>Enable game-time notifications</span>
+      <span style="margin-left:auto;font-size:18px;">→</span>
+    </div>
+
+    <div id="hero-section"></div>
+
+    <div class="section-head">
+      <span class="section-title">Coming up</span>
+    </div>
+    <div class="game-list" id="home-upcoming"></div>
+  </div>
+
+  <!-- ── SCHEDULE SCREEN ── -->
+  <div id="schedule-screen" class="screen">
+    <div class="schedule-header">
+      <div class="schedule-title">Full Schedule</div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="setFilter('all', this)">All games</button>
+        <button class="filter-btn" onclick="setFilter('tickets', this)">🎟 My tickets</button>
+        <button class="filter-btn" onclick="setFilter('home', this)">Home</button>
+      </div>
+    </div>
+    <div class="schedule-list" id="schedule-list"></div>
+  </div>
+
+  <!-- ── SETTINGS SCREEN ── -->
+  <div id="settings-screen" class="screen">
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-section">
+      <div class="settings-label">Your Team</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <span class="settings-row-label">Selected team</span>
+          <span class="settings-row-value" id="settings-team-display">—</span>
+        </div>
+        <div class="settings-row" style="cursor:pointer" onclick="resetSetup()">
+          <span class="settings-row-label">Change team</span>
+          <span>→</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Notifications</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <span class="settings-row-label">Game day reminder</span>
+          <div class="toggle" id="notif-toggle" onclick="toggleNotifications(this)"></div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Remind me</span>
+          <select id="remind-select" style="background:transparent;border:none;color:var(--muted);font-size:13px;font-family:inherit;cursor:pointer">
+            <option value="60">1 hour before</option>
+            <option value="120">2 hours before</option>
+            <option value="180" selected>3 hours before</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Season Tickets</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+        Upload a CSV with a column named <code style="color:#ff8a8d;font-family:'DM Mono',monospace">date</code> (format: YYYY-MM-DD). Games matching those dates will be marked with a ticket badge.
+      </p>
+      <div class="upload-zone" onclick="document.getElementById('csv-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="upload-icon">📎</div>
+        <div class="upload-title">Import ticket dates</div>
+        <div class="upload-sub">Tap to choose CSV · or drag & drop</div>
+      </div>
+      <input type="file" id="csv-input" accept=".csv,text/csv" onchange="handleCSV(this.files[0])">
+      <div id="ticket-list-container"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;">
+        Sample CSV format:<br>
+        <code style="color:#6b6b80;font-family:'DM Mono',monospace">date<br>2025-04-11<br>2025-04-13</code>
+      </p>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">About</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <span class="settings-row-label">Schedule data</span>
+          <span class="settings-row-value">MLB Stats API</span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Version</span>
+          <span class="settings-row-value">1.0.0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB BAR ── -->
+  <div class="tab-bar" id="tab-bar" style="display:none">
+    <div class="tab active" id="tab-home" onclick="showTab('home')">
+      <span class="tab-icon">⚾</span>
+      <span class="tab-label">Today</span>
+    </div>
+    <div class="tab" id="tab-schedule" onclick="showTab('schedule')">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">Schedule</span>
+    </div>
+    <div class="tab" id="tab-settings" onclick="showTab('settings')">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">Settings</span>
+    </div>
+  </div>
+
+  <!-- ── GAME DETAIL MODAL ── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-handle"></div>
+      <div id="modal-content"></div>
+      <button class="modal-close" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const TEAMS = [
+  { id: 116, name: 'Detroit Tigers',     abbr: 'DET', color: '#0C2340' },
+  { id: 147, name: 'New York Yankees',   abbr: 'NYY', color: '#003087' },
+  { id: 111, name: 'Boston Red Sox',     abbr: 'BOS', color: '#BD3039' },
+  { id: 145, name: 'Chicago White Sox',  abbr: 'CWS', color: '#27251F' },
+  { id: 114, name: 'Cleveland Guardians',abbr: 'CLE', color: '#00385D' },
+  { id: 142, name: 'Minnesota Twins',    abbr: 'MIN', color: '#002B5C' },
+  { id: 117, name: 'Houston Astros',     abbr: 'HOU', color: '#002D62' },
+  { id: 133, name: 'Oakland Athletics',  abbr: 'OAK', color: '#003831' },
+  { id: 140, name: 'Texas Rangers',      abbr: 'TEX', color: '#003278' },
+  { id: 108, name: 'LA Angels',          abbr: 'LAA', color: '#BA0021' },
+  { id: 141, name: 'Toronto Blue Jays',  abbr: 'TOR', color: '#134A8E' },
+  { id: 139, name: 'Tampa Bay Rays',     abbr: 'TB',  color: '#092C5C' },
+  { id: 110, name: 'Baltimore Orioles',  abbr: 'BAL', color: '#DF4601' },
+  { id: 113, name: 'Cincinnati Reds',    abbr: 'CIN', color: '#C6011F' },
+  { id: 158, name: 'Milwaukee Brewers',  abbr: 'MIL', color: '#12284B' },
+  { id: 138, name: 'St. Louis Cardinals',abbr: 'STL', color: '#C41E3A' },
+  { id: 112, name: 'Chicago Cubs',       abbr: 'CHC', color: '#0E3386' },
+  { id: 134, name: 'Pittsburgh Pirates', abbr: 'PIT', color: '#27251F' },
+  { id: 143, name: 'Philadelphia Phillies',abbr:'PHI',color: '#E81828' },
+  { id: 121, name: 'New York Mets',      abbr: 'NYM', color: '#002D72' },
+  { id: 120, name: 'Washington Nationals',abbr:'WSH',color: '#AB0003' },
+  { id: 144, name: 'Atlanta Braves',     abbr: 'ATL', color: '#CE1141' },
+  { id: 146, name: 'Miami Marlins',      abbr: 'MIA', color: '#00A3E0' },
+  { id: 137, name: 'San Francisco Giants',abbr:'SF', color: '#FD5A1E' },
+  { id: 119, name: 'LA Dodgers',         abbr: 'LAD', color: '#005A9C' },
+  { id: 109, name: 'Arizona Diamondbacks',abbr:'ARI',color: '#A71930' },
+  { id: 115, name: 'Colorado Rockies',   abbr: 'COL', color: '#33006F' },
+  { id: 135, name: 'San Diego Padres',   abbr: 'SD',  color: '#2F241D' },
+  { id: 136, name: 'Seattle Mariners',   abbr: 'SEA', color: '#0C2C56' },
+  { id: 118, name: 'Kansas City Royals', abbr: 'KC',  color: '#004687' },
+];
+
+// Broadcast networks mapping
+const BROADCAST_NAMES = {
+  'MLBTV': 'MLB.TV', 'ESPN': 'ESPN', 'ESPN2': 'ESPN2', 'FOX': 'FOX',
+  'FS1': 'FS1', 'TBS': 'TBS', 'MLB Network': 'MLB Network',
+  'Apple TV+': 'Apple TV+', 'Peacock': 'Peacock'
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let state = {
+  teamId: null,
+  teamName: '',
+  games: [],
+  ticketDates: new Set(),
+  notificationsEnabled: false,
+  currentFilter: 'all',
+  countdownInterval: null,
+};
+
+// ── TIGERS SEASON TICKET DATES (hard-coded) ───────────────────────────────────
+const TIGERS_TICKET_DATES = [
+  '2026-04-05','2026-04-12','2026-04-16','2026-04-18','2026-04-23',
+  '2026-05-03','2026-05-06','2026-05-17','2026-05-20','2026-05-27',
+  '2026-06-07','2026-06-11','2026-06-21','2026-06-24','2026-06-28',
+  '2026-07-09','2026-07-12','2026-07-23','2026-07-26','2026-07-29',
+  '2026-08-13','2026-08-16','2026-08-26','2026-08-30',
+  '2026-09-09','2026-09-13','2026-09-23','2026-09-27',
+];
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  renderTeamGrid();
+
+  // If no team saved yet, auto-select the Tigers
+  if (!localStorage.getItem('gd_team')) {
+    localStorage.setItem('gd_team', JSON.stringify({ id: 116, name: 'Detroit Tigers' }));
+    // Pre-load ticket dates if not already set
+    if (!localStorage.getItem('gd_tickets')) {
+      localStorage.setItem('gd_tickets', JSON.stringify(TIGERS_TICKET_DATES));
+    }
+  }
+
+  const saved = localStorage.getItem('gd_team');
+  if (saved) {
+    const t = JSON.parse(saved);
+    state.teamId = t.id;
+    state.teamName = t.name;
+    // Ensure ticket dates are loaded (pre-seeded or user-imported)
+    if (!state.ticketDates.size) {
+      state.ticketDates = new Set(TIGERS_TICKET_DATES);
+      localStorage.setItem('gd_tickets', JSON.stringify(TIGERS_TICKET_DATES));
+    }
+    enterApp();
+  }
+});
+
+function loadState() {
+  const td = localStorage.getItem('gd_tickets');
+  if (td) state.ticketDates = new Set(JSON.parse(td));
+  const notif = localStorage.getItem('gd_notif');
+  if (notif === 'true') {
+    state.notificationsEnabled = true;
+    document.getElementById('notif-toggle')?.classList.add('on');
+  }
+}
+
+// ── SETUP ─────────────────────────────────────────────────────────────────────
+function renderTeamGrid() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = TEAMS.map(t => `
+    <button class="team-btn" onclick="selectTeam(${t.id},'${t.name.replace(/'/g,"\\'")}',this)">
+      <span class="team-color" style="background:${t.color}"></span>
+      ${t.name}
+    </button>
+  `).join('');
+}
+
+function selectTeam(id, name, btn) {
+  state.teamId = id;
+  state.teamName = name;
+  document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('setup-btn').disabled = false;
+}
+
+function completeSetup() {
+  if (!state.teamId) return;
+  localStorage.setItem('gd_team', JSON.stringify({ id: state.teamId, name: state.teamName }));
+  enterApp();
+}
+
+function resetSetup() {
+  localStorage.removeItem('gd_team');
+  state.teamId = null; state.teamName = '';
+  document.getElementById('setup-screen').classList.add('active');
+  ['home-screen','schedule-screen','settings-screen'].forEach(s =>
+    document.getElementById(s).classList.remove('active'));
+  document.getElementById('tab-bar').style.display = 'none';
+}
+
+// ── APP ENTRY ─────────────────────────────────────────────────────────────────
+async function enterApp() {
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('home-screen').classList.add('active');
+  document.getElementById('tab-bar').style.display = 'flex';
+  document.getElementById('header-team-name').textContent = state.teamName;
+  document.getElementById('settings-team-display').textContent = state.teamName;
+
+  checkNotifBanner();
+  await fetchSchedule();
+  renderHome();
+  renderSchedule();
+}
+
+// ── MLB API ───────────────────────────────────────────────────────────────────
+async function fetchSchedule() {
+  const year = new Date().getFullYear();
+  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${state.teamId}&season=${year}&gameType=R&hydrate=broadcasts`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    state.games = [];
+    (data.dates || []).forEach(d => {
+      (d.games || []).forEach(g => {
+        const isHome = g.teams?.home?.team?.id === state.teamId;
+        const opp = isHome ? g.teams?.away?.team?.name : g.teams?.home?.team?.name;
+        const gameDate = g.gameDate || (d.date + 'T00:00:00Z');
+        const dt = new Date(gameDate);
+        const broadcasts = (g.broadcasts || []).map(b => b.name).filter(Boolean);
+        state.games.push({
+          id: g.gamePk,
+          date: d.date,
+          datetime: dt,
+          opponent: opp || 'TBD',
+          isHome,
+          venue: g.venue?.name || '',
+          broadcasts,
+          status: g.status?.abstractGameState || 'Preview',
+        });
+      });
+    });
+    state.games.sort((a,b) => a.datetime - b.datetime);
+  } catch(e) {
+    console.error('Failed to fetch schedule', e);
+    // Show demo data if API fails (e.g. CORS in preview)
+    state.games = getDemoGames();
+  }
+}
+
+function getDemoGames() {
+  const today = new Date();
+  const games = [];
+  const opponents = ['New York Yankees','Boston Red Sox','Cleveland Guardians','Chicago White Sox','Minnesota Twins','Houston Astros','Toronto Blue Jays','Tampa Bay Rays'];
+  const venues = ['Comerica Park','Yankee Stadium','Fenway Park','Progressive Field','Guaranteed Rate Field','Target Field','Minute Maid Park','Rogers Centre','Tropicana Field'];
+  const times = ['13:05','14:10','18:40','19:05','19:10','19:35','20:10'];
+  const bcast = [['ESPN'],['FS1'],['MLB Network'],['Apple TV+'],['Peacock'],['BSDET'],[]];
+  let d = new Date(today);
+  d.setDate(d.getDate() - 2);
+  for (let i = 0; i < 20; i++) {
+    const isHome = Math.random() > 0.5;
+    const t = times[Math.floor(Math.random()*times.length)];
+    const [h,m] = t.split(':');
+    const dt = new Date(d);
+    dt.setHours(parseInt(h), parseInt(m), 0);
+    const opp = opponents[Math.floor(Math.random()*opponents.length)];
+    games.push({
+      id: 700000 + i,
+      date: dt.toISOString().split('T')[0],
+      datetime: new Date(dt),
+      opponent: opp,
+      isHome,
+      venue: isHome ? 'Your Team\'s Ballpark' : venues[Math.floor(Math.random()*venues.length)],
+      broadcasts: bcast[Math.floor(Math.random()*bcast.length)],
+      status: i < 2 ? 'Final' : 'Preview',
+    });
+    d.setDate(d.getDate() + Math.ceil(Math.random() * 3));
+  }
+  return games;
+}
+
+// ── RENDER HOME ───────────────────────────────────────────────────────────────
+function renderHome() {
+  const now = new Date();
+  const upcoming = state.games.filter(g => g.datetime >= now || g.status === 'Live');
+  const next = upcoming[0];
+  const heroEl = document.getElementById('hero-section');
+  const upcomingEl = document.getElementById('home-upcoming');
+
+  if (!next) {
+    heroEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-title">No upcoming games</div><div class="empty-sub">Check back when the season starts!</div></div>';
+    upcomingEl.innerHTML = '';
+    return;
+  }
+
+  const hasTicket = state.ticketDates.has(next.date);
+  const matchup = next.isHome
+    ? `<span>${state.teamName.split(' ').pop()}</span><span class="hero-vs">vs</span><span>${next.opponent.split(' ').pop()}</span>`
+    : `<span>${next.opponent.split(' ').pop()}</span><span class="hero-vs">@</span><span>${state.teamName.split(' ').pop()}</span>`;
+
+  const bcastBadges = next.broadcasts.slice(0,2).map(b =>
+    `<span class="badge badge-tv">${b}</span>`).join('');
+
+  heroEl.innerHTML = `
+    <div class="hero" onclick="openGameModal(${next.id})">
+      <div class="hero-eyebrow">
+        ${next.status === 'Live' ? '<span class="live-dot"></span>LIVE NOW' : 'NEXT GAME'}
+      </div>
+      <div class="hero-matchup">${matchup}</div>
+      <div class="hero-meta">${formatDate(next.datetime)} · ${formatTime(next.datetime)}</div>
+      <div class="hero-meta" style="margin-top:-8px">${next.venue}</div>
+      <div class="hero-badges">
+        ${hasTicket ? '<span class="badge badge-ticket">🎟 Your tickets</span>' : ''}
+        ${next.isHome ? '<span class="badge badge-home">Home</span>' : '<span class="badge badge-away">Away</span>'}
+        ${bcastBadges}
+      </div>
+      <div class="countdown" id="countdown"></div>
+    </div>`;
+
+  startCountdown(next.datetime);
+
+  // Next 4 upcoming
+  const rest = upcoming.slice(1, 5);
+  upcomingEl.innerHTML = rest.map((g,i) => gameCardHTML(g, i*0.05)).join('');
+}
+
+function startCountdown(target) {
+  if (state.countdownInterval) clearInterval(state.countdownInterval);
+  function update() {
+    const el = document.getElementById('countdown');
+    if (!el) { clearInterval(state.countdownInterval); return; }
+    const diff = target - new Date();
+    if (diff <= 0) { el.innerHTML = '<span style="color:var(--accent);font-family:\'Bebas Neue\',sans-serif;font-size:18px;letter-spacing:1px;">GAME TIME!</span>'; return; }
+    const days = Math.floor(diff / 86400000);
+    const hrs  = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    el.innerHTML = `
+      <div class="cd-unit"><div class="cd-num">${String(days).padStart(2,'0')}</div><div class="cd-label">Days</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">${String(hrs).padStart(2,'0')}</div><div class="cd-label">Hrs</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">${String(mins).padStart(2,'0')}</div><div class="cd-label">Min</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">${String(secs).padStart(2,'0')}</div><div class="cd-label">Sec</div></div>`;
+  }
+  update();
+  state.countdownInterval = setInterval(update, 1000);
+}
+
+function gameCardHTML(g, delay = 0) {
+  const hasTicket = state.ticketDates.has(g.date);
+  const d = g.datetime;
+  const dayNum = d.getDate();
+  const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  const bcast = g.broadcasts[0] ? `<span class="badge badge-tv" style="font-size:10px">${g.broadcasts[0]}</span>` : '';
+  return `
+    <div class="game-card ${hasTicket?'has-ticket':''}" style="animation-delay:${delay}s" onclick="openGameModal(${g.id})">
+      <div class="game-date-col">
+        <div class="game-day">${dayNum}</div>
+        <div class="game-dow">${dow}</div>
+      </div>
+      <div class="game-divider"></div>
+      <div class="game-info">
+        <div class="game-matchup">${g.isHome ? state.teamName.split(' ').pop()+' vs '+g.opponent.split(' ').pop() : g.opponent.split(' ').pop()+' @ '+state.teamName.split(' ').pop()}</div>
+        <div class="game-detail">${formatTime(g.datetime)} · ${g.venue.split(' ').slice(0,2).join(' ')}</div>
+      </div>
+      <div class="game-badges-col">
+        ${hasTicket ? '<span class="badge badge-ticket" style="font-size:10px">🎟</span>' : ''}
+        ${bcast}
+      </div>
+    </div>`;
+}
+
+// ── RENDER SCHEDULE ───────────────────────────────────────────────────────────
+function renderSchedule(filter) {
+  filter = filter || state.currentFilter;
+  const listEl = document.getElementById('schedule-list');
+  let games = state.games;
+  if (filter === 'tickets') games = games.filter(g => state.ticketDates.has(g.date));
+  if (filter === 'home')    games = games.filter(g => g.isHome);
+
+  if (!games.length) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No games found</div><div class="empty-sub">Try a different filter</div></div>';
+    return;
+  }
+
+  let html = '';
+  let lastMonth = '';
+  games.forEach((g, i) => {
+    const mo = g.datetime.toLocaleString('default',{month:'long',year:'numeric'});
+    if (mo !== lastMonth) {
+      html += `<div class="month-label">${mo}</div>`;
+      lastMonth = mo;
+    }
+    html += gameCardHTML(g, i * 0.02);
+  });
+  listEl.innerHTML = html;
+}
+
+function setFilter(f, btn) {
+  state.currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSchedule(f);
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openGameModal(id) {
+  const g = state.games.find(x => x.id === id);
+  if (!g) return;
+  const hasTicket = state.ticketDates.has(g.date);
+  const bcast = g.broadcasts.join(', ') || 'Check local listings';
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-title">${g.isHome ? state.teamName.split(' ').pop()+' vs '+g.opponent : g.opponent+' @ '+state.teamName.split(' ').pop()}</div>
+    <div class="modal-sub">${formatDate(g.datetime)}</div>
+    <div class="modal-row"><span class="modal-row-label">Date</span><span>${formatDate(g.datetime)}</span></div>
+    <div class="modal-row"><span class="modal-row-label">First pitch</span><span>${formatTime(g.datetime)}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Venue</span><span>${g.venue}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Where to watch</span><span>${bcast}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Home/Away</span><span>${g.isHome ? '🏠 Home' : '✈️ Away'}</span></div>
+    <div class="modal-row"><span class="modal-row-label">Your tickets</span><span>${hasTicket ? '🎟 Yes!' : '—'}</span></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget?.classList?.contains('modal-close')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  ['home','schedule','settings'].forEach(t => {
+    document.getElementById(t+'-screen').classList.toggle('active', t === tab);
+    document.getElementById('tab-'+t)?.classList.toggle('active', t === tab);
+  });
+  if (tab === 'schedule') renderSchedule();
+}
+
+// ── CSV IMPORT ────────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleCSV(file);
+}
+
+function handleCSV(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g,''));
+    const dateIdx = headers.indexOf('date');
+    if (dateIdx === -1) {
+      alert('Could not find a "date" column in your CSV. Make sure the first row has a column called "date".');
+      return;
+    }
+    const dates = new Set();
+    lines.slice(1).forEach(line => {
+      const cols = line.split(',');
+      const val = cols[dateIdx]?.trim().replace(/"/g,'');
+      if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) dates.add(val);
+    });
+    state.ticketDates = dates;
+    localStorage.setItem('gd_tickets', JSON.stringify([...dates]));
+    renderTicketList();
+    renderHome();
+    renderSchedule();
+    alert(`✅ Imported ${dates.size} ticket date${dates.size !== 1 ? 's' : ''}!`);
+  };
+  reader.readAsText(file);
+}
+
+function renderTicketList() {
+  const el = document.getElementById('ticket-list-container');
+  if (!state.ticketDates.size) { el.innerHTML = ''; return; }
+  const sorted = [...state.ticketDates].sort();
+  el.innerHTML = `<div class="ticket-list">${sorted.map(d => {
+    const game = state.games.find(g => g.date === d);
+    const label = game ? `${game.opponent} — ${formatTime(game.datetime)}` : 'Game TBD';
+    return `<div class="ticket-item"><span class="ticket-dot"></span><span>${d}</span><span style="color:var(--muted);font-size:12px;margin-left:auto">${label}</span></div>`;
+  }).join('')}</div>`;
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+function checkNotifBanner() {
+  const banner = document.getElementById('notify-banner');
+  if (!('Notification' in window) || Notification.permission === 'granted') {
+    banner.classList.add('hidden');
+    if (Notification.permission === 'granted') {
+      state.notificationsEnabled = true;
+      document.getElementById('notif-toggle')?.classList.add('on');
+    }
+  }
+}
+
+async function requestNotifications() {
+  if (!('Notification' in window)) {
+    alert('Notifications are not supported in this browser. Try adding this page to your home screen first!');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    state.notificationsEnabled = true;
+    localStorage.setItem('gd_notif', 'true');
+    document.getElementById('notify-banner').classList.add('hidden');
+    document.getElementById('notif-toggle')?.classList.add('on');
+    scheduleNotifications();
+    new Notification('GameDay 🎉', { body: `You'll get reminders before every ${state.teamName} game!` });
+  }
+}
+
+function toggleNotifications(el) {
+  if (!state.notificationsEnabled) {
+    requestNotifications();
+  } else {
+    state.notificationsEnabled = false;
+    localStorage.setItem('gd_notif', 'false');
+    el.classList.remove('on');
+  }
+}
+
+function scheduleNotifications() {
+  if (!state.notificationsEnabled || !('Notification' in window)) return;
+  const minutesBefore = parseInt(document.getElementById('remind-select')?.value || '180');
+  const now = new Date();
+  state.games.slice(0, 10).forEach(g => {
+    const notifTime = new Date(g.datetime.getTime() - minutesBefore * 60000);
+    if (notifTime > now) {
+      const delay = notifTime - now;
+      setTimeout(() => {
+        if (Notification.permission === 'granted') {
+          const hasTicket = state.ticketDates.has(g.date);
+          new Notification(`⚾ ${state.teamName} game today!`, {
+            body: `${g.isHome ? 'vs' : '@'} ${g.opponent} · ${formatTime(g.datetime)} · ${g.broadcasts[0] || 'Check listings'}${hasTicket ? ' · 🎟 You have tickets!' : ''}`,
+            icon: '/icon-192.png',
+          });
+        }
+      }, delay);
+    }
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function formatDate(dt) {
+  return dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+function formatTime(dt) {
+  return dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+}
+</script>
+</body>
+</html>
