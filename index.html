@@ -168,99 +168,184 @@
   }
   .icon-btn:active { background: var(--surface2); }
 
-  /* ── NEXT GAME HERO ── */
-  .hero {
-    margin: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px;
+  /* ── MAIN WIDGET CARD ── */
+  .widget-card {
+    margin: 12px 16px 0;
+    border-radius: 24px;
+    padding: 22px 22px 20px;
     position: relative;
     overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s;
+    min-height: 200px;
   }
-  .hero::before {
+  .widget-card:active { transform: scale(0.98); }
+
+  /* Next game mode — dark surface */
+  .widget-card.mode-next {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .widget-card.mode-next::before {
     content: '';
     position: absolute;
-    top: -40px; right: -40px;
-    width: 180px; height: 180px;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(232,56,61,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(232,56,61,0.1) 0%, transparent 65%);
     pointer-events: none;
   }
-  .hero-eyebrow {
+
+  /* Live mode — vivid red glow */
+  .widget-card.mode-live {
+    background: linear-gradient(145deg, #1a0608 0%, #120d0f 100%);
+    border: 1px solid rgba(232,56,61,0.4);
+    box-shadow: 0 0 40px rgba(232,56,61,0.12);
+  }
+  .widget-card.mode-live::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,56,61,0.18) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  /* Final mode — muted */
+  .widget-card.mode-final {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .wc-eyebrow {
     font-size: 10px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--accent);
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
   }
+  .mode-next .wc-eyebrow { color: var(--muted); }
+  .mode-live .wc-eyebrow { color: #ff6b6b; }
+  .mode-final .wc-eyebrow { color: var(--muted); }
+
   .live-dot {
-    width: 6px; height: 6px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     background: var(--accent);
-    animation: pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+    animation: pulse 1.4s ease-in-out infinite;
   }
   @keyframes pulse {
     0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
+    50% { opacity: 0.3; transform: scale(0.65); }
   }
-  .hero-matchup {
+
+  /* ── SCOREBOARD (live/final) ── */
+  .scoreboard {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .sb-team {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .sb-abbr {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 38px;
-    letter-spacing: 1px;
-    line-height: 1;
-    margin-bottom: 4px;
-  }
-  .hero-vs { color: var(--muted); margin: 0 6px; }
-  .hero-meta {
-    font-size: 13px;
+    font-size: 15px;
+    letter-spacing: 2px;
     color: var(--muted);
-    margin-bottom: 14px;
+  }
+  .sb-runs {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    color: var(--text);
+    transition: color 0.3s;
+  }
+  .sb-runs.leading { color: #fff; }
+  .sb-runs.trailing { color: var(--muted); }
+  .sb-sub {
+    font-size: 11px;
+    color: var(--muted);
     font-family: 'DM Mono', monospace;
   }
-  .hero-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-  .badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 8px;
-    letter-spacing: 0.03em;
+  .sb-middle {
+    width: 64px;
+    text-align: center;
+    flex-shrink: 0;
   }
-  .badge-ticket {
-    background: var(--ticket-bg);
-    color: #4ade80;
-    border: 1px solid rgba(42,157,92,0.25);
+  .sb-inning {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    line-height: 1.2;
   }
-  .badge-tv {
-    background: var(--surface2);
+  .sb-sep {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    color: rgba(255,255,255,0.1);
+    line-height: 1;
+    display: block;
+    margin: 4px 0;
+  }
+
+  /* ── NEXT GAME DISPLAY ── */
+  .ng-matchup {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ng-vs {
+    font-size: 22px;
     color: var(--muted);
-    border: 1px solid var(--border);
   }
-  .badge-home {
-    background: rgba(232,56,61,0.1);
-    color: #ff8a8d;
-    border: 1px solid rgba(232,56,61,0.2);
-  }
-  .badge-away {
-    background: rgba(107,107,128,0.15);
+  .ng-meta {
+    font-size: 13px;
     color: var(--muted);
-    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 2px;
   }
-  .countdown {
-    margin-top: 14px;
+
+  /* ── WIDGET FOOTER ── */
+  .wc-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
     padding-top: 14px;
     border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .mode-live .wc-footer { border-top-color: rgba(232,56,61,0.2); }
+
+  /* ── COUNTDOWN ── */
+  .countdown {
     display: flex;
-    gap: 16px;
+    gap: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
   }
   .cd-unit { text-align: center; }
   .cd-num {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
+    font-size: 26px;
     line-height: 1;
     color: var(--accent);
   }
@@ -272,15 +357,15 @@
   }
   .cd-sep {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    color: var(--border);
+    font-size: 22px;
+    color: rgba(255,255,255,0.15);
     align-self: flex-start;
     margin-top: 2px;
   }
 
   /* ── SECTION ── */
   .section-head {
-    padding: 4px 20px 10px;
+    padding: 16px 20px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -640,61 +725,6 @@
   .empty-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
   .empty-sub { font-size: 13px; }
 
-  /* ── LIVE SCORE HERO ── */
-  .hero-live {
-    background: linear-gradient(135deg, rgba(232,56,61,0.15), rgba(255,107,53,0.08));
-    border-color: rgba(232,56,61,0.35);
-  }
-  .live-score-board {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 10px 0 14px;
-    gap: 8px;
-  }
-  .score-team { flex: 1; text-align: center; }
-  .score-team-name {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-  .score-runs {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 56px;
-    line-height: 1;
-    color: var(--text);
-  }
-  .score-runs.winning { color: #4ade80; }
-  .score-middle { text-align: center; flex-shrink: 0; }
-  .score-inning {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    color: var(--accent);
-    line-height: 1;
-  }
-  .score-inning-label {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .score-half { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .lob-row {
-    display: flex;
-    gap: 16px;
-    font-size: 12px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-    margin-top: 2px;
-  }
-  .lob-stat { display: flex; gap: 4px; align-items: center; }
-  .lob-val { color: var(--text); font-weight: 500; }
-
   /* ── FINAL / IN-LIST SCORE ── */
   .game-score {
     font-family: 'Bebas Neue', sans-serif;
@@ -751,16 +781,8 @@
       <span style="margin-left:auto;font-size:18px;">→</span>
     </div>
 
-    <!-- Live game pinned at top -->
-    <div id="live-section" style="display:none">
-      <div class="section-head">
-        <span class="section-title" style="color:var(--accent)">⚡ Live now</span>
-        <span class="refresh-badge"><span id="refresh-spin">↻</span>&nbsp;<span id="refresh-label">updating…</span></span>
-      </div>
-      <div class="game-list" style="padding-bottom:0" id="live-game-card"></div>
-    </div>
-
-    <div id="hero-section"></div>
+    <!-- Unified widget card — switches between live/next/final automatically -->
+    <div id="main-widget"></div>
 
     <div class="section-head">
       <span class="section-title">Coming up</span>
@@ -1036,8 +1058,8 @@ async function enterApp() {
   document.getElementById('settings-team-display').textContent = state.teamName;
 
   // Show loading state immediately
-  document.getElementById('hero-section').innerHTML = `
-    <div style="padding:32px 20px;text-align:center">
+  document.getElementById('main-widget').innerHTML = `
+    <div style="margin:16px;padding:32px 20px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:24px">
       <div style="font-size:28px;margin-bottom:10px;animation:spin 1.2s linear infinite;display:inline-block">⚾</div>
       <div style="font-size:13px;color:var(--muted)">Loading Tigers schedule…</div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">First load may take 20–30 sec while the server wakes up</div>
@@ -1095,8 +1117,8 @@ async function fetchSchedule() {
   } catch(e) {
     console.error('Failed to fetch schedule', e);
     // Show friendly error with retry option
-    document.getElementById('hero-section').innerHTML = `
-      <div style="margin:16px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 20px;text-align:center">
+    document.getElementById('main-widget').innerHTML = `
+      <div style="margin:16px;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px 20px;text-align:center">
         <div style="font-size:32px;margin-bottom:10px">📡</div>
         <div style="font-size:15px;font-weight:500;margin-bottom:6px">Can't reach the server</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">The proxy server may still be waking up.<br>This can take up to 30 seconds on first load.</div>
@@ -1213,109 +1235,149 @@ async function fetchLiveScores() {
 // ── RENDER HOME ───────────────────────────────────────────────────────────────
 function renderHome() {
   const now = new Date();
-  const liveGames = state.games.filter(g => g.status === 'Live');
-  const upcoming = state.games.filter(g => g.status !== 'Final' && g.status !== 'Live' && g.datetime >= now);
-  const next = upcoming[0];
-
-  const heroEl = document.getElementById('hero-section');
+  const widgetEl = document.getElementById('main-widget');
   const upcomingEl = document.getElementById('home-upcoming');
-  const liveSection = document.getElementById('live-section');
-  const liveCardEl = document.getElementById('live-game-card');
+  if (!widgetEl) return;
 
-  // ── Live game block ──
-  if (liveGames.length > 0) {
-    liveSection.style.display = 'block';
-    liveCardEl.innerHTML = liveGames.map(g => liveScoreCardHTML(g)).join('');
+  const liveGame   = state.games.find(g => g.status === 'Live');
+  const todayFinal = state.games.find(g => {
+    if (g.status !== 'Final') return false;
+    const d = g.datetime;
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth()    === now.getMonth() &&
+           d.getDate()     === now.getDate();
+  });
+  const nextGame = state.games.find(g => g.status !== 'Final' && g.status !== 'Live' && g.datetime > now);
+
+  if (liveGame) {
+    widgetEl.innerHTML = buildLiveWidget(liveGame);
+  } else if (todayFinal) {
+    widgetEl.innerHTML = buildFinalWidget(todayFinal, nextGame);
+  } else if (nextGame) {
+    widgetEl.innerHTML = buildNextWidget(nextGame);
+    startCountdown(nextGame.datetime);
   } else {
-    liveSection.style.display = 'none';
-    liveCardEl.innerHTML = '';
-  }
-
-  // ── Next game hero ──
-  if (!next) {
-    if (liveGames.length === 0) {
-      heroEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-title">No upcoming games</div><div class="empty-sub">Check back when the season starts!</div></div>';
-    } else {
-      heroEl.innerHTML = '';
-    }
-    upcomingEl.innerHTML = '';
-    return;
-  }
-
-  const hasTicket = state.ticketDates.has(next.date);
-  const matchup = next.isHome
-    ? `<span>${state.teamName.split(' ').pop()}</span><span class="hero-vs">vs</span><span>${next.opponent.split(' ').pop()}</span>`
-    : `<span>${next.opponent.split(' ').pop()}</span><span class="hero-vs">@</span><span>${state.teamName.split(' ').pop()}</span>`;
-  const bcastBadges = next.broadcasts.slice(0,2).map(b =>
-    `<span class="badge badge-tv">${b}</span>`).join('');
-
-  heroEl.innerHTML = `
-    <div class="hero" onclick="openGameModal(${next.id})">
-      <div class="hero-eyebrow">NEXT GAME</div>
-      <div class="hero-matchup">${matchup}</div>
-      <div class="hero-meta">${formatDate(next.datetime)} · ${formatTime(next.datetime)}</div>
-      <div class="hero-meta" style="margin-top:-8px">${next.venue}</div>
-      <div class="hero-badges">
-        ${hasTicket ? '<span class="badge badge-ticket">🎟 Your tickets</span>' : ''}
-        ${next.isHome ? '<span class="badge badge-home">Home</span>' : '<span class="badge badge-away">Away</span>'}
-        ${bcastBadges}
-      </div>
-      <div class="countdown" id="countdown"></div>
+    widgetEl.innerHTML = `<div style="margin:16px;padding:32px 20px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:24px">
+      <div style="font-size:36px;margin-bottom:10px">🏟️</div>
+      <div style="font-size:15px;font-weight:500">No upcoming games</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Check back when the season starts!</div>
     </div>`;
+  }
 
-  startCountdown(next.datetime);
-
-  // Next 4 upcoming after next
-  const rest = upcoming.slice(1, 5);
-  upcomingEl.innerHTML = rest.map((g,i) => gameCardHTML(g, i*0.05)).join('');
+  const upcoming = state.games.filter(g =>
+    g.status !== 'Live' && g.status !== 'Final' && g.datetime > now
+  ).slice(liveGame ? 0 : 1, liveGame ? 5 : 6);
+  upcomingEl.innerHTML = upcoming.map((g,i) => gameCardHTML(g, i*0.05)).join('');
 }
 
-// ── LIVE SCORE CARD ───────────────────────────────────────────────────────────
-function liveScoreCardHTML(g) {
+// ── LIVE WIDGET ───────────────────────────────────────────────────────────────
+function buildLiveWidget(g) {
   const ld = g.liveData || {};
-  const myTeamIsHome = g.isHome;
-  const myRuns = myTeamIsHome ? ld.homeRuns : ld.awayRuns;
-  const oppRuns = myTeamIsHome ? ld.awayRuns : ld.homeRuns;
-  const myHits  = myTeamIsHome ? (ld.hits?.home ?? 0) : (ld.hits?.away ?? 0);
-  const oppHits = myTeamIsHome ? (ld.hits?.away ?? 0) : (ld.hits?.home ?? 0);
-  const myErr   = myTeamIsHome ? (ld.errors?.home ?? 0) : (ld.errors?.away ?? 0);
-  const oppErr  = myTeamIsHome ? (ld.errors?.away ?? 0) : (ld.errors?.home ?? 0);
-  const myWinning = myRuns > oppRuns;
-  const oppWinning = oppRuns > myRuns;
+  const myRuns  = g.isHome ? (ld.homeRuns ?? 0) : (ld.awayRuns ?? 0);
+  const oppRuns = g.isHome ? (ld.awayRuns ?? 0) : (ld.homeRuns ?? 0);
+  const oppAbbr = g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const myHits  = g.isHome ? (ld.hits?.home ?? 0) : (ld.hits?.away ?? 0);
+  const oppHits = g.isHome ? (ld.hits?.away ?? 0) : (ld.hits?.home ?? 0);
+  const myErr   = g.isHome ? (ld.errors?.home ?? 0) : (ld.errors?.away ?? 0);
+  const oppErr  = g.isHome ? (ld.errors?.away ?? 0) : (ld.errors?.home ?? 0);
   const hasTicket = state.ticketDates.has(g.date);
-  const inningLabel = ld.inningHalf ? `${ld.inningHalf} ${ld.inning}` : `Inn ${ld.inning}`;
-  const myName = state.teamName.split(' ').pop();
-  const oppName = g.opponent.split(' ').pop();
-  const bcast = g.broadcasts[0] ? `<span class="badge badge-tv">${g.broadcasts[0]}</span>` : '';
-
+  const bcast = g.broadcasts[0] || '';
+  const inningStr = ld.inningHalf && ld.inning ? `${ld.inningHalf} ${ld.inning}` : (ld.detailedState || 'In Progress');
   return `
-    <div class="game-card hero-live has-ticket" style="${hasTicket?'border-left:3px solid var(--ticket)':''}" onclick="openGameModal(${g.id})">
-      <div style="width:100%">
-        <div class="hero-eyebrow" style="margin-bottom:8px">
-          <span class="live-dot"></span>LIVE · ${ld.detailedState || 'In Progress'}
-          ${hasTicket ? '&nbsp;<span class="badge badge-ticket" style="font-size:10px">🎟 Your tickets</span>' : ''}
-          ${bcast}
-        </div>
-        <div class="live-score-board">
-          <div class="score-team">
-            <div class="score-team-name">${g.isHome ? myName : oppName}</div>
-            <div class="score-runs ${g.isHome ? (myWinning?'winning':'') : (oppWinning?'winning':'')}">${g.isHome ? myRuns : oppRuns}</div>
-          </div>
-          <div class="score-middle">
-            <div class="score-inning">${ld.inning || '—'}</div>
-            <div class="score-inning-label">${ld.inningHalf || 'Inning'}</div>
-          </div>
-          <div class="score-team">
-            <div class="score-team-name">${g.isHome ? oppName : myName}</div>
-            <div class="score-runs ${g.isHome ? (oppWinning?'winning':'') : (myWinning?'winning':'')}">${g.isHome ? oppRuns : myRuns}</div>
-          </div>
-        </div>
-        <div class="lob-row">
-          <div class="lob-stat">${myName}: <span class="lob-val">${myHits}H</span>&nbsp;<span class="lob-val">${myErr}E</span></div>
-          <div class="lob-stat">${oppName}: <span class="lob-val">${oppHits}H</span>&nbsp;<span class="lob-val">${oppErr}E</span></div>
-        </div>
+  <div class="widget-card mode-live" onclick="openGameModal(${g.id})">
+    <div class="wc-eyebrow">
+      <span class="live-dot"></span>LIVE · ${inningStr}
+      <span style="margin-left:auto;font-size:9px;color:var(--muted)" id="refresh-label"></span>
+    </div>
+    <div class="scoreboard">
+      <div class="sb-team">
+        <div class="sb-abbr">${g.isHome ? 'DET' : oppAbbr}</div>
+        <div class="sb-runs ${myRuns > oppRuns ? 'leading' : myRuns < oppRuns ? 'trailing' : ''}">${myRuns}</div>
+        <div class="sb-sub">${myHits}H · ${myErr}E</div>
       </div>
-    </div>`;
+      <div class="sb-middle"><span class="sb-sep">:</span></div>
+      <div class="sb-team">
+        <div class="sb-abbr">${g.isHome ? oppAbbr : 'DET'}</div>
+        <div class="sb-runs ${oppRuns > myRuns ? 'leading' : oppRuns < myRuns ? 'trailing' : ''}">${oppRuns}</div>
+        <div class="sb-sub">${oppHits}H · ${oppErr}E</div>
+      </div>
+    </div>
+    <div class="wc-footer">
+      ${hasTicket ? '<span class="badge badge-ticket">🎟 Your tickets</span>' : ''}
+      ${g.isHome ? '<span class="badge badge-home">Home</span>' : '<span class="badge badge-away">Away</span>'}
+      ${bcast ? `<span class="badge badge-tv">${bcast}</span>` : ''}
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${g.venue.split(' ').slice(0,2).join(' ')}</span>
+    </div>
+  </div>`;
+}
+
+// ── FINAL WIDGET ──────────────────────────────────────────────────────────────
+function buildFinalWidget(g, next) {
+  const ld = g.liveData || {};
+  const myRuns  = g.isHome ? (ld.homeRuns ?? 0) : (ld.awayRuns ?? 0);
+  const oppRuns = g.isHome ? (ld.awayRuns ?? 0) : (ld.homeRuns ?? 0);
+  const won = myRuns > oppRuns;
+  const oppAbbr = g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const hasTicket = state.ticketDates.has(g.date);
+  const nextInfo = next ? `
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Next game</div>
+      <div style="font-size:15px;font-weight:600">${next.isHome ? 'Tigers vs ' + next.opponent.split(' ').pop() : next.opponent.split(' ').pop() + ' @ Tigers'}</div>
+      <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">${formatDate(next.datetime)} · ${formatTime(next.datetime)}</div>
+      ${next.broadcasts[0] ? `<div style="margin-top:6px"><span class="badge badge-tv">${next.broadcasts[0]}</span></div>` : ''}
+    </div>` : '';
+  return `
+  <div class="widget-card mode-final" onclick="openGameModal(${g.id})">
+    <div class="wc-eyebrow" style="color:${won?'#4ade80':'#ff8a8d'}">${won ? '✓ FINAL · WIN' : '✗ FINAL · LOSS'}</div>
+    <div class="scoreboard">
+      <div class="sb-team">
+        <div class="sb-abbr">${g.isHome ? 'DET' : oppAbbr}</div>
+        <div class="sb-runs ${myRuns > oppRuns ? 'leading' : 'trailing'}">${g.isHome ? myRuns : oppRuns}</div>
+      </div>
+      <div class="sb-middle"><span class="sb-sep">:</span></div>
+      <div class="sb-team">
+        <div class="sb-abbr">${g.isHome ? oppAbbr : 'DET'}</div>
+        <div class="sb-runs ${oppRuns > myRuns ? 'leading' : 'trailing'}">${g.isHome ? oppRuns : myRuns}</div>
+      </div>
+    </div>
+    <div class="wc-footer">
+      ${hasTicket ? '<span class="badge badge-ticket">🎟 Your tickets</span>' : ''}
+      ${g.isHome ? '<span class="badge badge-home">Home</span>' : '<span class="badge badge-away">Away</span>'}
+    </div>
+    ${nextInfo}
+  </div>`;
+}
+
+// ── NEXT GAME WIDGET ──────────────────────────────────────────────────────────
+function buildNextWidget(g) {
+  const hasTicket = state.ticketDates.has(g.date);
+  const myName  = state.teamName.split(' ').pop();
+  const oppName = g.opponent.split(' ').pop();
+  const bcast   = g.broadcasts.slice(0,2).map(b => `<span class="badge badge-tv">${b}</span>`).join('');
+  return `
+  <div class="widget-card mode-next" onclick="openGameModal(${g.id})">
+    <div class="wc-eyebrow">NEXT GAME · ${formatDate(g.datetime).toUpperCase()}</div>
+    <div class="ng-matchup">
+      <span>${g.isHome ? myName : oppName}</span>
+      <span class="ng-vs">${g.isHome ? 'vs' : '@'}</span>
+      <span>${g.isHome ? oppName : myName}</span>
+    </div>
+    <div class="ng-meta">${formatTime(g.datetime)} · ${g.venue}</div>
+    <div class="countdown" id="countdown">
+      <div class="cd-unit"><div class="cd-num">--</div><div class="cd-label">Days</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">--</div><div class="cd-label">Hrs</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">--</div><div class="cd-label">Min</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num">--</div><div class="cd-label">Sec</div></div>
+    </div>
+    <div class="wc-footer" style="margin-top:4px">
+      ${hasTicket ? '<span class="badge badge-ticket">🎟 Your tickets</span>' : ''}
+      ${g.isHome ? '<span class="badge badge-home">Home</span>' : '<span class="badge badge-away">Away</span>'}
+      ${bcast}
+    </div>
+  </div>`;
 }
 
 function startCountdown(target) {
