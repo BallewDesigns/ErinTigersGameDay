@@ -740,6 +740,7 @@
         <div class="header-team" id="header-team-name">Loading…</div>
       </div>
       <div class="header-right">
+        <div class="icon-btn" id="refresh-btn" onclick="manualRefresh()" title="Refresh">↻</div>
         <div class="icon-btn" onclick="showTab('settings')" title="Settings">⚙️</div>
       </div>
     </div>
@@ -845,10 +846,21 @@
           <span class="settings-row-value">MLB Stats API</span>
         </div>
         <div class="settings-row">
+          <span class="settings-row-label">Live scores</span>
+          <span class="settings-row-value">Updates every 60s</span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Proxy server</span>
+          <span class="settings-row-value" style="font-size:11px">mlb-proxy.onrender.com</span>
+        </div>
+        <div class="settings-row">
           <span class="settings-row-label">Version</span>
-          <span class="settings-row-value">1.0.0</span>
+          <span class="settings-row-value">1.1.0</span>
         </div>
       </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+        The first load of the day may take 20–30 seconds while the proxy server wakes up. After that it stays fast until you close the app.
+      </p>
     </div>
   </div>
 
@@ -1023,12 +1035,29 @@ async function enterApp() {
   document.getElementById('header-team-name').textContent = state.teamName;
   document.getElementById('settings-team-display').textContent = state.teamName;
 
+  // Show loading state immediately
+  document.getElementById('hero-section').innerHTML = `
+    <div style="padding:32px 20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:10px;animation:spin 1.2s linear infinite;display:inline-block">⚾</div>
+      <div style="font-size:13px;color:var(--muted)">Loading Tigers schedule…</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">First load may take 20–30 sec while the server wakes up</div>
+    </div>`;
+
   checkNotifBanner();
   await fetchSchedule();
   renderHome();
   renderSchedule();
-  // Fetch live scores after schedule loads; auto-refresh handles itself
   fetchLiveScores();
+}
+
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.style.animation = 'spin 1s linear infinite'; btn.style.display = 'inline-flex'; }
+  await fetchSchedule();
+  await fetchLiveScores();
+  renderHome();
+  renderSchedule();
+  if (btn) btn.style.animation = '';
 }
 
 // ── MLB PROXY ─────────────────────────────────────────────────────────────────
@@ -1037,7 +1066,8 @@ const PROXY = 'https://mlb-proxy.onrender.com';
 // ── MLB API ───────────────────────────────────────────────────────────────────
 async function fetchSchedule() {
   const year = new Date().getFullYear();
-  const url = `${PROXY}/schedule?teamId=${state.teamId}&season=${year}&gameType=R&hydrate=broadcasts`;
+  // S = Spring Training, R = Regular Season
+  const url = `${PROXY}/schedule?teamId=${state.teamId}&season=${year}&gameType=S,R&hydrate=broadcasts`;
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -1064,8 +1094,15 @@ async function fetchSchedule() {
     state.games.sort((a,b) => a.datetime - b.datetime);
   } catch(e) {
     console.error('Failed to fetch schedule', e);
-    // Show demo data if API fails (e.g. CORS in preview)
-    state.games = getDemoGames();
+    // Show friendly error with retry option
+    document.getElementById('hero-section').innerHTML = `
+      <div style="margin:16px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 20px;text-align:center">
+        <div style="font-size:32px;margin-bottom:10px">📡</div>
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">Can't reach the server</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">The proxy server may still be waking up.<br>This can take up to 30 seconds on first load.</div>
+        <button onclick="manualRefresh()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px 20px;color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Try again</button>
+      </div>`;
+    state.games = [];
   }
 }
 
@@ -1113,7 +1150,7 @@ async function fetchLiveScores() {
   try {
     // Get today's games for this team
     const today = new Date().toISOString().split('T')[0];
-    const url = `${PROXY}/today?teamId=${state.teamId}&date=${today}`;
+    const url = `${PROXY}/today?teamId=${state.teamId}&date=${today}&gameType=S,R`;
     const res = await fetch(url);
     const data = await res.json();
 
