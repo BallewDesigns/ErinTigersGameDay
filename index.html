@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="GameDay">
 <meta name="theme-color" content="#0a0a0f">
 <title>GameDay</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="/ErinTigersGameDay/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1611,7 +1611,7 @@ function scheduleNotifications() {
           const hasTicket = state.ticketDates.has(g.date);
           new Notification(`⚾ ${state.teamName} game today!`, {
             body: `${g.isHome ? 'vs' : '@'} ${g.opponent} · ${formatTime(g.datetime)} · ${g.broadcasts[0] || 'Check listings'}${hasTicket ? ' · 🎟 You have tickets!' : ''}`,
-            icon: '/icon-192.png',
+            icon: '/ErinTigersGameDay/icon-192.png',
           });
         }
       }, delay);
@@ -1625,6 +1625,15 @@ function formatDate(dt) {
 }
 function formatTime(dt) {
   return dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/ErinTigersGameDay/sw.js', {
+      scope: '/ErinTigersGameDay/'
+    }).catch(err => console.log('SW registration failed:', err));
+  });
 }
 </script>
 </body>
