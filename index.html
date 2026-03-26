@@ -1273,13 +1273,15 @@ function renderHome() {
 // ── LIVE WIDGET ───────────────────────────────────────────────────────────────
 function buildLiveWidget(g) {
   const ld = g.liveData || {};
-  const myRuns  = g.isHome ? (ld.homeRuns ?? 0) : (ld.awayRuns ?? 0);
-  const oppRuns = g.isHome ? (ld.awayRuns ?? 0) : (ld.homeRuns ?? 0);
-  const oppAbbr = g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
-  const myHits  = g.isHome ? (ld.hits?.home ?? 0) : (ld.hits?.away ?? 0);
-  const oppHits = g.isHome ? (ld.hits?.away ?? 0) : (ld.hits?.home ?? 0);
-  const myErr   = g.isHome ? (ld.errors?.home ?? 0) : (ld.errors?.away ?? 0);
-  const oppErr  = g.isHome ? (ld.errors?.away ?? 0) : (ld.errors?.home ?? 0);
+  // Always: away team left, home team right (standard baseball)
+  const awayRuns = ld.awayRuns ?? 0;
+  const homeRuns = ld.homeRuns ?? 0;
+  const awayAbbr = g.isHome ? g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase() : 'DET';
+  const homeAbbr = g.isHome ? 'DET' : g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const awayHits = ld.hits?.away ?? 0;
+  const homeHits = ld.hits?.home ?? 0;
+  const awayErr  = ld.errors?.away ?? 0;
+  const homeErr  = ld.errors?.home ?? 0;
   const hasTicket = state.ticketDates.has(g.date);
   const bcast = g.broadcasts[0] || '';
   const inningStr = ld.inningHalf && ld.inning ? `${ld.inningHalf} ${ld.inning}` : (ld.detailedState || 'In Progress');
@@ -1291,15 +1293,15 @@ function buildLiveWidget(g) {
     </div>
     <div class="scoreboard">
       <div class="sb-team">
-        <div class="sb-abbr">${g.isHome ? 'DET' : oppAbbr}</div>
-        <div class="sb-runs ${myRuns > oppRuns ? 'leading' : myRuns < oppRuns ? 'trailing' : ''}">${myRuns}</div>
-        <div class="sb-sub">${myHits}H · ${myErr}E</div>
+        <div class="sb-abbr">${awayAbbr}</div>
+        <div class="sb-runs ${awayRuns > homeRuns ? 'leading' : awayRuns < homeRuns ? 'trailing' : ''}">${awayRuns}</div>
+        <div class="sb-sub">${awayHits}H · ${awayErr}E</div>
       </div>
       <div class="sb-middle"><span class="sb-sep">:</span></div>
       <div class="sb-team">
-        <div class="sb-abbr">${g.isHome ? oppAbbr : 'DET'}</div>
-        <div class="sb-runs ${oppRuns > myRuns ? 'leading' : oppRuns < myRuns ? 'trailing' : ''}">${oppRuns}</div>
-        <div class="sb-sub">${oppHits}H · ${oppErr}E</div>
+        <div class="sb-abbr">${homeAbbr}</div>
+        <div class="sb-runs ${homeRuns > awayRuns ? 'leading' : homeRuns < awayRuns ? 'trailing' : ''}">${homeRuns}</div>
+        <div class="sb-sub">${homeHits}H · ${homeErr}E</div>
       </div>
     </div>
     <div class="wc-footer">
@@ -1314,10 +1316,14 @@ function buildLiveWidget(g) {
 // ── FINAL WIDGET ──────────────────────────────────────────────────────────────
 function buildFinalWidget(g, next) {
   const ld = g.liveData || {};
-  const myRuns  = g.isHome ? (ld.homeRuns ?? 0) : (ld.awayRuns ?? 0);
-  const oppRuns = g.isHome ? (ld.awayRuns ?? 0) : (ld.homeRuns ?? 0);
+  // Always: away team left, home team right
+  const awayRuns = ld.awayRuns ?? 0;
+  const homeRuns = ld.homeRuns ?? 0;
+  const awayAbbr = g.isHome ? g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase() : 'DET';
+  const homeAbbr = g.isHome ? 'DET' : g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const myRuns  = g.isHome ? homeRuns : awayRuns;
+  const oppRuns = g.isHome ? awayRuns : homeRuns;
   const won = myRuns > oppRuns;
-  const oppAbbr = g.opponent.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
   const hasTicket = state.ticketDates.has(g.date);
   const nextInfo = next ? `
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
@@ -1331,13 +1337,13 @@ function buildFinalWidget(g, next) {
     <div class="wc-eyebrow" style="color:${won?'#4ade80':'#ff8a8d'}">${won ? '✓ FINAL · WIN' : '✗ FINAL · LOSS'}</div>
     <div class="scoreboard">
       <div class="sb-team">
-        <div class="sb-abbr">${g.isHome ? 'DET' : oppAbbr}</div>
-        <div class="sb-runs ${myRuns > oppRuns ? 'leading' : 'trailing'}">${g.isHome ? myRuns : oppRuns}</div>
+        <div class="sb-abbr">${awayAbbr}</div>
+        <div class="sb-runs ${awayRuns > homeRuns ? 'leading' : 'trailing'}">${awayRuns}</div>
       </div>
       <div class="sb-middle"><span class="sb-sep">:</span></div>
       <div class="sb-team">
-        <div class="sb-abbr">${g.isHome ? oppAbbr : 'DET'}</div>
-        <div class="sb-runs ${oppRuns > myRuns ? 'leading' : 'trailing'}">${g.isHome ? oppRuns : myRuns}</div>
+        <div class="sb-abbr">${homeAbbr}</div>
+        <div class="sb-runs ${homeRuns > awayRuns ? 'leading' : 'trailing'}">${homeRuns}</div>
       </div>
     </div>
     <div class="wc-footer">
