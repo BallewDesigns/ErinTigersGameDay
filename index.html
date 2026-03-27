@@ -736,6 +736,64 @@
   .game-score.win { color: #4ade80; }
   .game-score.loss { color: var(--accent); }
 
+  /* ── TICKET TOGGLE ROW ── */
+  .ticket-toggle-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    animation: fadeUp 0.3s ease both;
+  }
+  .ticket-toggle-row:active { background: var(--surface2); }
+  .ticket-toggle-row.has-ticket {
+    border-left: 3px solid var(--ticket);
+    background: rgba(42,157,92,0.05);
+  }
+  .ticket-toggle-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+  .ticket-toggle-info { flex: 1; min-width: 0; }
+  .ticket-toggle-matchup {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ticket-toggle-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .ticket-toggle-btn {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .ticket-toggle-btn.active {
+    background: var(--ticket-bg);
+    border-color: rgba(42,157,92,0.3);
+    color: #4ade80;
+  }
+
   /* ── REFRESH INDICATOR ── */
   .refresh-badge {
     font-size: 10px;
@@ -841,22 +899,15 @@
 
     <div class="settings-section">
       <div class="settings-label">Season Tickets</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
-        Upload a CSV with a column named <code style="color:#ff8a8d;font-family:'DM Mono',monospace">date</code> (format: YYYY-MM-DD). Games matching those dates will be marked with a ticket badge.
-      </p>
-      <div class="upload-zone" onclick="document.getElementById('csv-input').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="handleDrop(event)">
-        <div class="upload-icon">📎</div>
-        <div class="upload-title">Import ticket dates</div>
-        <div class="upload-sub">Tap to choose CSV · or drag & drop</div>
+      <div class="settings-card">
+        <div class="settings-row" style="cursor:pointer" onclick="showTab('tickets')">
+          <span class="settings-row-label">Manage my ticket games</span>
+          <span id="ticket-count-badge" style="font-size:13px;color:var(--muted)">— games</span>
+          <span style="margin-left:8px">→</span>
+        </div>
       </div>
-      <input type="file" id="csv-input" accept=".csv,text/csv" onchange="handleCSV(this.files[0])">
-      <div id="ticket-list-container"></div>
-      <p style="font-size:11px;color:var(--muted);margin-top:10px;">
-        Sample CSV format:<br>
-        <code style="color:#6b6b80;font-family:'DM Mono',monospace">date<br>2025-04-11<br>2025-04-13</code>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+        Tap any game in My Tickets to toggle whether you have tickets for that game.
       </p>
     </div>
 
@@ -877,13 +928,22 @@
         </div>
         <div class="settings-row">
           <span class="settings-row-label">Version</span>
-          <span class="settings-row-value">1.1.0</span>
+          <span class="settings-row-value">1.2.0</span>
         </div>
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
         The first load of the day may take 20–30 seconds while the proxy server wakes up. After that it stays fast until you close the app.
       </p>
     </div>
+  </div>
+
+  <!-- ── MY TICKETS SCREEN ── -->
+  <div id="tickets-screen" class="screen">
+    <div class="schedule-header">
+      <div class="schedule-title">My Tickets</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:4px">Tap a game to add or remove your tickets</div>
+    </div>
+    <div class="schedule-list" id="tickets-list"></div>
   </div>
 
   <!-- ── TAB BAR ── -->
@@ -895,6 +955,10 @@
     <div class="tab" id="tab-schedule" onclick="showTab('schedule')">
       <span class="tab-icon">📅</span>
       <span class="tab-label">Schedule</span>
+    </div>
+    <div class="tab" id="tab-tickets" onclick="showTab('tickets')">
+      <span class="tab-icon">🎟</span>
+      <span class="tab-label">My Tickets</span>
     </div>
     <div class="tab" id="tab-settings" onclick="showTab('settings')">
       <span class="tab-icon">⚙️</span>
@@ -1070,6 +1134,7 @@ async function enterApp() {
   renderHome();
   renderSchedule();
   fetchLiveScores();
+  updateTicketCount();
 }
 
 async function manualRefresh() {
@@ -1512,11 +1577,70 @@ function closeModal(e) {
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function showTab(tab) {
-  ['home','schedule','settings'].forEach(t => {
+  ['home','schedule','tickets','settings'].forEach(t => {
     document.getElementById(t+'-screen').classList.toggle('active', t === tab);
     document.getElementById('tab-'+t)?.classList.toggle('active', t === tab);
   });
   if (tab === 'schedule') renderSchedule();
+  if (tab === 'tickets') renderTickets();
+}
+
+// ── RENDER TICKETS ────────────────────────────────────────────────────────────
+function renderTickets() {
+  const listEl = document.getElementById('tickets-list');
+  const now = new Date();
+  // Show all games, past and future
+  const games = state.games;
+
+  if (!games.length) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">Schedule not loaded</div><div class="empty-sub">Go back to Today and wait for the schedule to load.</div></div>';
+    return;
+  }
+
+  let html = '';
+  let lastMonth = '';
+  games.forEach((g, i) => {
+    const mo = g.datetime.toLocaleString('default', { month:'long', year:'numeric' });
+    if (mo !== lastMonth) {
+      html += `<div class="month-label">${mo}</div>`;
+      lastMonth = mo;
+    }
+    const hasTicket = state.ticketDates.has(g.date);
+    const isPast = g.datetime < now;
+    const matchup = g.isHome
+      ? `Tigers vs ${g.opponent.split(' ').pop()}`
+      : `${g.opponent.split(' ').pop()} @ Tigers`;
+    html += `
+      <div class="ticket-toggle-row ${hasTicket ? 'has-ticket' : ''}" style="animation-delay:${i*0.02}s;${isPast?'opacity:0.5':''}" onclick="toggleTicket('${g.date}')">
+        <div class="ticket-toggle-icon">${hasTicket ? '🎟' : '⚾'}</div>
+        <div class="ticket-toggle-info">
+          <div class="ticket-toggle-matchup">${matchup}</div>
+          <div class="ticket-toggle-meta">${formatDate(g.datetime)} · ${formatTime(g.datetime)}</div>
+        </div>
+        <button class="ticket-toggle-btn ${hasTicket ? 'active' : ''}" onclick="event.stopPropagation();toggleTicket('${g.date}')">
+          ${hasTicket ? '✓ Going' : '+ Add'}
+        </button>
+      </div>`;
+  });
+  listEl.innerHTML = html;
+  updateTicketCount();
+}
+
+function toggleTicket(date) {
+  if (state.ticketDates.has(date)) {
+    state.ticketDates.delete(date);
+  } else {
+    state.ticketDates.add(date);
+  }
+  localStorage.setItem('gd_tickets', JSON.stringify([...state.ticketDates]));
+  renderTickets();
+  renderHome();
+  renderSchedule();
+}
+
+function updateTicketCount() {
+  const el = document.getElementById('ticket-count-badge');
+  if (el) el.textContent = `${state.ticketDates.size} game${state.ticketDates.size !== 1 ? 's' : ''}`;
 }
 
 // ── CSV IMPORT ────────────────────────────────────────────────────────────────
