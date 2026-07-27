@@ -206,12 +206,15 @@ document.getElementById('loadInput').addEventListener('change', async (e) => {
 });
 
 function loadSavedMeasurements(saved) {
+  console.log('[debug] loadSavedMeasurements called with', saved);
   Object.keys(pageState).forEach(k => delete pageState[k]);
   for (const [pageNum, saved_] of Object.entries(saved.pages || {})) {
     pageState[pageNum] = saved_;
   }
+  console.log('[debug] pageState after load:', JSON.stringify(pageState));
   redrawOverlay();
   renderSidebar();
+  console.log('[debug] currentPage:', currentPage, 'getPageState():', JSON.stringify(getPageState()));
 }
 
 document.getElementById('scaleInput').addEventListener('change', async (e) => {
