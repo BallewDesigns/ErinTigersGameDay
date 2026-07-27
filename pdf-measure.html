@@ -175,9 +175,7 @@ document.getElementById('pdfInput').addEventListener('change', async (e) => {
 });
 
 async function loadPdfFromBuffer(buffer, fileName) {
-  console.log('[debug] loadPdfFromBuffer start, byteLength=', buffer.byteLength);
   pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-  console.log('[debug] getDocument resolved, numPages=', pdfDoc.numPages);
   pdfFileName = fileName;
   currentPage = 1;
   Object.keys(pageState).forEach(k => delete pageState[k]);
@@ -187,9 +185,7 @@ async function loadPdfFromBuffer(buffer, fileName) {
   document.getElementById('measureBtn').disabled = false;
   document.getElementById('calibrateBtn').disabled = false;
   document.getElementById('clearBtn').disabled = false;
-  console.log('[debug] calling renderPage()');
   await renderPage();
-  console.log('[debug] renderPage() resolved');
   renderSidebar();
 }
 
@@ -210,15 +206,13 @@ document.getElementById('loadInput').addEventListener('change', async (e) => {
 });
 
 function loadSavedMeasurements(saved) {
-  console.log('[debug] loadSavedMeasurements called with', saved);
   Object.keys(pageState).forEach(k => delete pageState[k]);
   for (const [pageNum, saved_] of Object.entries(saved.pages || {})) {
     pageState[pageNum] = saved_;
   }
-  console.log('[debug] pageState after load:', JSON.stringify(pageState));
   redrawOverlay();
   renderSidebar();
-  console.log('[debug] currentPage:', currentPage, 'getPageState():', JSON.stringify(getPageState()));
+  if (pdfDoc) updateStatus();
 }
 
 document.getElementById('scaleInput').addEventListener('change', async (e) => {
@@ -287,7 +281,6 @@ let renderToken = 0;
 let currentRenderTask = null;
 
 async function renderPage() {
-  console.log('[debug] renderPage start, currentPage=', currentPage);
   const token = ++renderToken;
 
   // A render already in flight (e.g. from clicking Next twice quickly) must be cancelled, not
@@ -297,7 +290,6 @@ async function renderPage() {
   }
 
   const page = await pdfDoc.getPage(currentPage);
-  console.log('[debug] getPage resolved');
   if (token !== renderToken) return; // a newer render started while we were awaiting
 
   const viewport = page.getViewport({ scale: renderScale });
@@ -306,14 +298,11 @@ async function renderPage() {
   overlay.style.width = pageCanvas.style.width = viewport.width + 'px';
   overlay.style.height = pageCanvas.style.height = viewport.height + 'px';
 
-  console.log('[debug] starting page.render()');
   const task = page.render({ canvasContext: pageCtx, viewport });
   currentRenderTask = task;
   try {
     await task.promise;
-    console.log('[debug] page.render() promise resolved');
   } catch (err) {
-    console.log('[debug] page.render() threw', err && err.name, err && err.message);
     if (err && err.name === 'RenderingCancelledException') return;
     throw err;
   } finally {
