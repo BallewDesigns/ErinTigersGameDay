@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BD PDF Measure</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --panel: #2a2a2a;
+    --border: #3d3d3d;
+    --text: #e8e8e8;
+    --accent: #4da3ff;
+    --accent-line: #ffd23f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Segoe UI, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  button {
+    background: #3a3a3a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #4a4a4a; }
+  button.active { background: var(--accent); color: #111; border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  input[type=file] { display: none; }
+  #pageLabel { min-width: 90px; text-align: center; }
+  #status {
+    margin-left: auto;
+    font-size: 12px;
+    color: #aaa;
+    max-width: 420px;
+    text-align: right;
+  }
+  #main { flex: 1; display: flex; overflow: hidden; }
+  #viewerWrap {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+  #stage { position: relative; }
+  canvas { display: block; }
+  #overlay { position: absolute; top: 0; left: 0; cursor: crosshair; }
+
+  #sidebar {
+    width: 300px;
+    flex: none;
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+  #sidebarHeader {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #sidebarHeader button { font-size: 12px; padding: 5px 8px; }
+  #measurementList { flex: 1; overflow-y: auto; padding: 6px; }
+  .measureRow {
+    background: #333;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .measureRow .sheet { color: #9c9c9c; font-size: 11px; }
+  .measureRow .distanceRow { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+  .measureRow .distance { color: var(--accent-line); font-weight: 600; }
+  .measureRow input {
+    width: 100%;
+    margin-top: 4px;
+    background: #222;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 5px;
+    font-size: 12px;
+  }
+  .measureRow .removeBtn {
+    background: none;
+    border: none;
+    color: #d66;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+  #emptyList { color: #888; font-size: 12px; padding: 8px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <label><input type="file" id="pdfInput" accept="application/pdf"><button onclick="document.getElementById('pdfInput').click()">Open PDF</button></label>
+  <label><input type="file" id="scaleInput" accept="application/json,.json"><button onclick="document.getElementById('scaleInput').click()">Open Scale Data</button></label>
+  <button id="prevBtn" onclick="changePage(-1)" disabled>&larr; Prev</button>
+  <span id="pageLabel">-- / --</span>
+  <button id="nextBtn" onclick="changePage(1)" disabled>Next &rarr;</button>
+  <button id="measureBtn" class="active" onclick="setMode('measure')" disabled>Measure</button>
+  <button id="calibrateBtn" onclick="setMode('calibrate')" disabled>Calibrate</button>
+  <button id="clearBtn" onclick="clearMeasurements()" disabled>Clear Page</button>
+  <span id="status">Open a PDF to begin.</span>
+</div>
+
+<div id="main">
+  <div id="viewerWrap">
+    <div id="stage">
+      <canvas id="pageCanvas"></canvas>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <label><input type="file" id="loadInput" accept="application/json,.json"><button onclick="document.getElementById('loadInput').click()">Load Saved</button></label>
+      <button onclick="saveMeasurements()">Save Measurements</button>
+      <button onclick="exportCsv()">Export CSV</button>
+    </div>
+    <div id="measurementList"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
+
+let pdfDoc = null;
+let pdfFileName = '';
+let currentPage = 1;
+let renderScale = 1.5;         // canvas pixels per PDF point
+let scaleData = null;          // parsed .measure.json, if loaded
+let mode = 'measure';
+let pendingPoint = null;       // first click of a two-click measurement/calibration
+// Per-page state: { inchesPerPoint, measurements: [{x1,y1,x2,y2,distance,note}] }
+const pageState = {};
+
+const pageCanvas = document.getElementById('pageCanvas');
+const overlay = document.getElementById('overlay');
+const pageCtx = pageCanvas.getContext('2d');
+const overlayCtx = overlay.getContext('2d');
+
+document.getElementById('pdfInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    await loadPdfFromBuffer(await file.arrayBuffer(), file.name);
+  } catch (err) {
+    setStatus('Could not open that PDF: ' + err.message);
+  }
+});
+
+async function loadPdfFromBuffer(buffer, fileName) {
+  pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+  pdfFileName = fileName;
+  currentPage = 1;
+  Object.keys(pageState).forEach(k => delete pageState[k]);
+
+  document.getElementById('prevBtn').disabled = false;
+  document.getElementById('nextBtn').disabled = false;
+  document.getElementById('measureBtn').disabled = false;
+  document.getElementById('calibrateBtn').disabled = false;
+  document.getElementById('clearBtn').disabled = false;
+  await renderPage();
+  renderSidebar();
+}
+
+document.getElementById('loadInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const saved = JSON.parse(await file.text());
+    if (saved.pdfFileName && pdfFileName && saved.pdfFileName !== pdfFileName) {
+      if (!confirm(`This list was saved for "${saved.pdfFileName}", not the currently loaded "${pdfFileName}". Load anyway?`)) return;
+    }
+    Object.keys(pageState).forEach(k => delete pageState[k]);
+    for (const [pageNum, saved_] of Object.entries(saved.pages || {})) {
+      pageState[pageNum] = saved_;
+    }
+    redrawOverlay();
+    renderSidebar();
+    setStatus('Loaded saved measurements.');
+  } catch (err) {
+    setStatus('Could not read that saved-measurements file: ' + err.message);
+  }
+});
+
+document.getElementById('scaleInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    loadScaleData(JSON.parse(await file.text()));
+  } catch (err) {
+    setStatus('Could not read that scale file: ' + err.message);
+  }
+});
+
+function loadScaleData(parsed) {
+  scaleData = parsed;
+  Object.keys(pageState).forEach(k => delete pageState[k]); // re-derive scale source per page
+  if (pdfDoc) renderPage();
+}
+
+function changePage(delta) {
+  if (!pdfDoc) return;
+  const next = currentPage + delta;
+  if (next < 1 || next > pdfDoc.numPages) return;
+  currentPage = next;
+  renderPage();
+}
+
+function setMode(next) {
+  mode = next;
+  pendingPoint = null;
+  document.getElementById('measureBtn').classList.toggle('active', mode === 'measure');
+  document.getElementById('calibrateBtn').classList.toggle('active', mode === 'calibrate');
+  redrawOverlay();
+}
+
+function clearMeasurements() {
+  const state = getPageState();
+  state.measurements = [];
+  redrawOverlay();
+  renderSidebar();
+}
+
+function getPageState() {
+  if (!pageState[currentPage]) {
+    const fromData = scaleData && scaleData.pages && scaleData.pages[currentPage - 1];
+    const scaleRatio = fromData && fromData.scale ? fromData.scale : null;
+    pageState[currentPage] = {
+      inchesPerPoint: scaleRatio ? scaleRatio / 72 : null,
+      scaleSource: scaleRatio ? 'auto' : null,
+      sheetLabel: fromData ? (fromData.sheetNumber + ' — ' + fromData.sheetName) : ('Page ' + currentPage),
+      measurements: []
+    };
+  }
+  return pageState[currentPage];
+}
+
+let renderToken = 0;
+let currentRenderTask = null;
+
+async function renderPage() {
+  const token = ++renderToken;
+
+  // A render already in flight (e.g. from clicking Next twice quickly) must be cancelled, not
+  // just ignored — pdf.js can't run two render() calls against the same canvas concurrently.
+  if (currentRenderTask) {
+    currentRenderTask.cancel();
+  }
+
+  const page = await pdfDoc.getPage(currentPage);
+  if (token !== renderToken) return; // a newer render started while we were awaiting
+
+  const viewport = page.getViewport({ scale: renderScale });
+  pageCanvas.width = overlay.width = viewport.width;
+  pageCanvas.height = overlay.height = viewport.height;
+  overlay.style.width = pageCanvas.style.width = viewport.width + 'px';
+  overlay.style.height = pageCanvas.style.height = viewport.height + 'px';
+
+  const task = page.render({ canvasContext: pageCtx, viewport });
+  currentRenderTask = task;
+  try {
+    await task.promise;
+  } catch (err) {
+    if (err && err.name === 'RenderingCancelledException') return;
+    throw err;
+  } finally {
+    if (currentRenderTask === task) currentRenderTask = null;
+  }
+  if (token !== renderToken) return;
+
+  document.getElementById('pageLabel').textContent = currentPage + ' / ' + pdfDoc.numPages;
+  document.getElementById('prevBtn').disabled = currentPage <= 1;
+  document.getElementById('nextBtn').disabled = currentPage >= pdfDoc.numPages;
+
+  pendingPoint = null;
+  redrawOverlay();
+  updateStatus();
+}
+
+function updateStatus() {
+  const state = getPageState();
+  if (state.scaleSource === 'auto') {
+    setStatus((state.sheetLabel ? state.sheetLabel + ' — ' : '') + 'Scale from export data (1:' + Math.round(72 * state.inchesPerPoint) + '). Click two points to measure.');
+  } else if (state.scaleSource === 'manual') {
+    setStatus('Manually calibrated for this page. Click two points to measure.');
+  } else {
+    setStatus('No scale set for this page — click Calibrate, draw a known-length line, and enter its real length.');
+  }
+}
+
+function setStatus(text) { document.getElementById('status').textContent = text; }
+
+overlay.addEventListener('click', (e) => {
+  if (!pdfDoc) return;
+  const rect = overlay.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (!pendingPoint) {
+    pendingPoint = { x, y };
+    redrawOverlay();
+    return;
+  }
+
+  const p1 = pendingPoint;
+  const p2 = { x, y };
+  pendingPoint = null;
+  const pixelDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  const pointDistance = pixelDistance / renderScale; // canvas px -> PDF points
+
+  if (mode === 'calibrate') {
+    const input = prompt('Real-world length of this line, in feet (decimals allowed, e.g. 10.5):');
+    const feet = parseFloat(input);
+    if (!input || isNaN(feet) || feet <= 0) { redrawOverlay(); return; }
+    const state = getPageState();
+    state.inchesPerPoint = (feet * 12) / pointDistance;
+    state.scaleSource = 'manual';
+    setMode('measure');
+    updateStatus();
+    return;
+  }
+
+  const state = getPageState();
+  if (!state.inchesPerPoint) {
+    setStatus('No scale set for this page yet — click Calibrate first.');
+    redrawOverlay();
+    return;
+  }
+
+  const realInches = pointDistance * state.inchesPerPoint;
+  state.measurements.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, distance: formatFeetInches(realInches), note: '' });
+  redrawOverlay();
+  renderSidebar();
+});
+
+function redrawOverlay() {
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+  const state = getPageState();
+
+  overlayCtx.strokeStyle = '#4da3ff';
+  overlayCtx.fillStyle = '#4da3ff';
+  overlayCtx.lineWidth = 2;
+  overlayCtx.font = '14px Segoe UI, Arial, sans-serif';
+
+  for (const m of state.measurements) {
+    drawLine(m.x1, m.y1, m.x2, m.y2, m.note ? (m.note + ': ' + m.distance) : m.distance, '#ffd23f');
+  }
+
+  if (pendingPoint) {
+    overlayCtx.beginPath();
+    overlayCtx.arc(pendingPoint.x, pendingPoint.y, 4, 0, Math.PI * 2);
+    overlayCtx.fillStyle = '#4da3ff';
+    overlayCtx.fill();
+  }
+}
+
+function drawLine(x1, y1, x2, y2, label, color) {
+  overlayCtx.strokeStyle = color;
+  overlayCtx.fillStyle = color;
+  overlayCtx.lineWidth = 2;
+  overlayCtx.beginPath();
+  overlayCtx.moveTo(x1, y1);
+  overlayCtx.lineTo(x2, y2);
+  overlayCtx.stroke();
+  [[x1, y1], [x2, y2]].forEach(([x, y]) => {
+    overlayCtx.beginPath();
+    overlayCtx.arc(x, y, 3, 0, Math.PI * 2);
+    overlayCtx.fill();
+  });
+
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+  const textWidth = overlayCtx.measureText(label).width;
+  overlayCtx.fillStyle = 'rgba(0,0,0,0.7)';
+  overlayCtx.fillRect(midX - textWidth / 2 - 4, midY - 18, textWidth + 8, 18);
+  overlayCtx.fillStyle = color;
+  overlayCtx.fillText(label, midX - textWidth / 2, midY - 4);
+}
+
+/** Rounds to the nearest whole inch and formats as feet'-inches" — matches the Room Dimensions tool's convention. */
+function formatFeetInches(totalInches) {
+  const rounded = Math.round(totalInches);
+  const feet = Math.floor(rounded / 12);
+  const inches = rounded % 12;
+  return feet + "'-" + inches + '"';
+}
+
+/** Lists every measurement across every page that's been visited, so gaps show up at a glance. */
+function renderSidebar() {
+  const list = document.getElementById('measurementList');
+  list.innerHTML = '';
+
+  const rows = [];
+  for (const [pageNum, state] of Object.entries(pageState)) {
+    state.measurements.forEach((m, index) => rows.push({ pageNum, state, m, index }));
+  }
+
+  if (rows.length === 0) {
+    list.innerHTML = '<div id="emptyList">No measurements yet. Click Measure, then click two points on the drawing.</div>';
+    return;
+  }
+
+  for (const { pageNum, state, m, index } of rows) {
+    const row = document.createElement('div');
+    row.className = 'measureRow';
+
+    const sheetDiv = document.createElement('div');
+    sheetDiv.className = 'sheet';
+    sheetDiv.textContent = state.sheetLabel || ('Page ' + pageNum);
+    row.appendChild(sheetDiv);
+
+    const distanceRow = document.createElement('div');
+    distanceRow.className = 'distanceRow';
+    const distanceSpan = document.createElement('span');
+    distanceSpan.className = 'distance';
+    distanceSpan.textContent = m.distance;
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'removeBtn';
+    removeBtn.textContent = '✕';
+    removeBtn.title = 'Remove this measurement';
+    removeBtn.onclick = () => {
+      state.measurements.splice(index, 1);
+      if (Number(pageNum) === currentPage) redrawOverlay();
+      renderSidebar();
+    };
+    distanceRow.appendChild(distanceSpan);
+    distanceRow.appendChild(removeBtn);
+    row.appendChild(distanceRow);
+
+    const noteInput = document.createElement('input');
+    noteInput.type = 'text';
+    noteInput.placeholder = 'What is this? (e.g. Living Rm width)';
+    noteInput.value = m.note || '';
+    noteInput.oninput = () => {
+      m.note = noteInput.value;
+      if (Number(pageNum) === currentPage) redrawOverlay();
+    };
+    row.appendChild(noteInput);
+
+    list.appendChild(row);
+  }
+}
+
+function saveMeasurements() {
+  const pages = {};
+  for (const [pageNum, state] of Object.entries(pageState)) {
+    if (state.measurements.length > 0) pages[pageNum] = state;
+  }
+  const payload = { pdfFileName, savedAt: new Date().toISOString(), pages };
+  downloadFile(JSON.stringify(payload, null, 2), suggestedFileBase() + '.measurements.json', 'application/json');
+}
+
+function exportCsv() {
+  const rows = [['Sheet', 'Note', 'Distance']];
+  for (const state of Object.values(pageState)) {
+    for (const m of state.measurements) {
+      rows.push([state.sheetLabel || '', m.note || '', m.distance]);
+    }
+  }
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+  downloadFile(csv, suggestedFileBase() + '.measurements.csv', 'text/csv');
+}
+
+function csvEscape(value) {
+  const s = String(value ?? '');
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function suggestedFileBase() {
+  return (pdfFileName || 'measurements').replace(/\.pdf$/i, '');
+}
+
+function downloadFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Module scripts don't leak top-level declarations onto window, but the toolbar buttons use
+// inline onclick attributes, so the handlers they call need to be exposed explicitly.
+window.changePage = changePage;
+window.setMode = setMode;
+window.clearMeasurements = clearMeasurements;
+window.saveMeasurements = saveMeasurements;
+window.exportCsv = exportCsv;
+
+renderSidebar();
+autoLoadFromUrlParams();
+
+/**
+ * Supports linking straight to a pre-loaded PDF (and its scale sidecar) from a portal page, e.g.
+ * bd-pdf-measure.html?pdf=<url>&scale=<url> — so a builder doesn't have to manually pick files.
+ * Falls back silently to the manual Open buttons if params are absent or a fetch fails (e.g. CORS).
+ */
+async function autoLoadFromUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const pdfUrl = params.get('pdf');
+  const scaleUrl = params.get('scale');
+  if (!pdfUrl) return;
+
+  setStatus('Loading PDF…');
+  try {
+    const response = await fetch(pdfUrl);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const buffer = await response.arrayBuffer();
+    const suggestedName = decodeURIComponent(pdfUrl.split('/').pop().split('?')[0]) || 'document.pdf';
+    await loadPdfFromBuffer(buffer, suggestedName);
+  } catch (err) {
+    setStatus('Could not auto-load the PDF (' + err.message + ') — use Open PDF instead.');
+    return;
+  }
+
+  if (scaleUrl) {
+    try {
+      const response = await fetch(scaleUrl);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      loadScaleData(await response.json());
+    } catch (err) {
+      setStatus('PDF loaded, but could not auto-load scale data (' + err.message + ') — measurements need Calibrate.');
+    }
+  }
+}
+</script>
+</body>
+</html>
