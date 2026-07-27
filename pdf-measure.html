@@ -194,35 +194,49 @@ document.getElementById('loadInput').addEventListener('change', async (e) => {
   if (!file) return;
   try {
     const saved = JSON.parse(await file.text());
-    if (saved.pdfFileName && pdfFileName && saved.pdfFileName !== pdfFileName) {
-      if (!confirm(`This list was saved for "${saved.pdfFileName}", not the currently loaded "${pdfFileName}". Load anyway?`)) return;
+    if (saved.pdfFileName && pdfFileName && saved.pdfFileName !== pdfFileName &&
+        !confirm(`This list was saved for "${saved.pdfFileName}", not the currently loaded "${pdfFileName}". Load anyway?`)) {
+      return;
     }
-    Object.keys(pageState).forEach(k => delete pageState[k]);
-    for (const [pageNum, saved_] of Object.entries(saved.pages || {})) {
-      pageState[pageNum] = saved_;
-    }
-    redrawOverlay();
-    renderSidebar();
+    loadSavedMeasurements(saved);
     setStatus('Loaded saved measurements.');
   } catch (err) {
     setStatus('Could not read that saved-measurements file: ' + err.message);
   }
 });
 
+function loadSavedMeasurements(saved) {
+  Object.keys(pageState).forEach(k => delete pageState[k]);
+  for (const [pageNum, saved_] of Object.entries(saved.pages || {})) {
+    pageState[pageNum] = saved_;
+  }
+  redrawOverlay();
+  renderSidebar();
+}
+
 document.getElementById('scaleInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    loadScaleData(JSON.parse(await file.text()));
+    loadScaleOrSaved(JSON.parse(await file.text()));
   } catch (err) {
     setStatus('Could not read that scale file: ' + err.message);
   }
 });
 
-function loadScaleData(parsed) {
-  scaleData = parsed;
-  Object.keys(pageState).forEach(k => delete pageState[k]); // re-derive scale source per page
-  if (pdfDoc) renderPage();
+/**
+ * Accepts either the plain per-sheet scale sidecar BatchRunner writes at export time
+ * ({ pages: [{sheetNumber, sheetName, scale}, ...] }) or a full "Save Measurements" export
+ * ({ pages: { "1": {inchesPerPoint, measurements, ...} } }) — whichever someone hands it.
+ */
+function loadScaleOrSaved(parsed) {
+  if (Array.isArray(parsed.pages)) {
+    scaleData = parsed;
+    Object.keys(pageState).forEach(k => delete pageState[k]); // re-derive scale source per page
+    if (pdfDoc) renderPage();
+  } else {
+    loadSavedMeasurements(parsed);
+  }
 }
 
 function changePage(delta) {
@@ -545,7 +559,7 @@ async function autoLoadFromUrlParams() {
     try {
       const response = await fetch(scaleUrl);
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      loadScaleData(await response.json());
+      loadScaleOrSaved(await response.json());
     } catch (err) {
       setStatus('PDF loaded, but could not auto-load scale data (' + err.message + ') — measurements need Calibrate.');
     }
