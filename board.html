@@ -10,22 +10,37 @@
 <meta name="apple-mobile-web-app-title" content="BD Board">
 <link rel="apple-touch-icon" href="https://ballewdesigns.github.io/ErinTigersGameDay/board-icon-180.png">
 <link rel="manifest" href="https://ballewdesigns.github.io/ErinTigersGameDay/board-manifest.json">
-<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec">
 <style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f3ede1;font-family:"Inter","Segoe UI",system-ui,sans-serif;color:#2c3a47}
-  .box{text-align:center}
+  .box{text-align:center;padding:24px}
   img{width:72px;height:72px;border-radius:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(53,90,122,0.3)}
-  a{color:#355a7a}
+  .hint{color:#6f7e8c;font-size:13px;margin-top:6px;max-width:260px}
+  .btn{
+    display:inline-block;margin-top:16px;background:#355a7a;color:#fff;
+    text-decoration:none;font-weight:600;font-size:14px;
+    padding:10px 20px;border-radius:8px;
+  }
 </style>
 </head>
 <body>
   <div class="box">
     <img src="https://ballewdesigns.github.io/ErinTigersGameDay/board-icon-180.png" alt="">
-    <div>Opening Project Board…</div>
-    <div style="margin-top:10px;font-size:13px"><a href="https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec">Tap here if it doesn't open</a></div>
+    <div id="msg">Ballew Designs — Project Board</div>
+    <div class="hint" id="hint">Add this page to your home screen (Share → Add to Home Screen), then open it from there.</div>
+    <a class="btn" id="open-link" href="https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec">Open Project Board</a>
   </div>
   <script>
-    location.replace("https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec");
+    const EXEC_URL = "https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec";
+    // Only auto-jump when actually launched from a home-screen icon (standalone mode).
+    // A normal browser visit (e.g. while setting up "Add to Home Screen") stays put,
+    // otherwise the page would redirect out from under you before you could add it.
+    const isStandalone = window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) {
+      document.getElementById('msg').textContent = 'Opening…';
+      document.getElementById('hint').style.display = 'none';
+      location.replace(EXEC_URL);
+    }
   </script>
 </body>
 </html>
