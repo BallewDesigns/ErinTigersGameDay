@@ -1,7 +1,8 @@
 {
   "name": "Ballew Designs — Project Board",
   "short_name": "BD Board",
-  "start_url": "https://script.google.com/macros/s/AKfycbw0wdlAzjG4IFdNt2tGAGmZHz47YrFDllkh7Rf9b7aRYI4lwLZmHxn32q-KIEPSsLU8/exec",
+  "start_url": "https://ballewdesigns.github.io/ErinTigersGameDay/board.html",
+  "scope": "https://ballewdesigns.github.io/ErinTigersGameDay/",
   "display": "standalone",
   "background_color": "#f3ede1",
   "theme_color": "#355a7a",
